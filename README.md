@@ -655,12 +655,23 @@ User → cdn.gitlab.example.com → Cloudflare Edge (cached)
 
 Ensure `CDN_DOMAIN`, `VPC_SERVICE_ID`, and optionally `CDN_WORKER_NAME` are set in `.env`.
 
+First, generate a random shared auth token. The CDN Worker sends this token to GitLab when
+fetching content through the tunnel, and GitLab verifies it before serving the response. Both
+sides must use the same value.
+
+```bash
+# Generate a random 32-character hex token
+openssl rand -hex 16
+```
+
+Save the output. You will need it twice: once for the Worker secret and once for GitLab admin.
+
 ```bash
 cd gitlab-cdn/
 npm install
 ./generate-wrangler.sh                   # generates wrangler.jsonc from ../.env
 npm run deploy
-npx wrangler secret put STORAGE_TOKEN    # shared auth token
+npx wrangler secret put STORAGE_TOKEN    # paste the token you generated above
 ```
 
 **10b. Enable in GitLab:**
@@ -668,7 +679,7 @@ npx wrangler secret put STORAGE_TOKEN    # shared auth token
 Admin → Settings → Repository → **Static Objects External Storage**:
 
 - **URL:** `https://cdn.gitlab.example.com`
-- **Token:** same value as `STORAGE_TOKEN`
+- **Token:** paste the same token from step 10a
 
 **10c. Provision WAF + cache rules:**
 
@@ -868,16 +879,18 @@ The repo uses a modular CI pipeline defined in `.gitlab-ci.yml` with job files u
 All lint jobs run on every push to `main` and on merge request events. The deploy stage runs only
 on `main`.
 
-| Stage  | Job              | What it checks                                                    |
-| ------ | ---------------- | ----------------------------------------------------------------- |
-| lint   | shellcheck       | Shell script correctness (all `.sh` files + hook scripts)         |
-| lint   | shfmt            | Shell formatting (`-i 2 -ci -bn`). Excludes `rails-cheatsheet.sh` |
-| lint   | prettier         | Markdown, JSON, TypeScript, and YAML formatting                   |
-| lint   | markdownlint     | Structural Markdown issues (headings, lists, code fences)         |
-| lint   | codespell        | Common typos across all files                                     |
-| lint   | printf-check     | No bare `echo` usage in scripts (heredoc blocks exempt)           |
-| lint   | executable-check | Verify `+x` bit on scripts. Excludes `rails-cheatsheet.sh`        |
-| deploy | mirror-github    | Force-pushes `main` to GitHub (runs after all lint jobs pass)     |
+| Stage   | Job              | What it does                                                      |
+| ------- | ---------------- | ----------------------------------------------------------------- |
+| lint    | shellcheck       | Shell script correctness (all `.sh` files + hook scripts)         |
+| lint    | shfmt            | Shell formatting (`-i 2 -ci -bn`). Excludes `rails-cheatsheet.sh` |
+| lint    | prettier         | Markdown, JSON, TypeScript, and YAML formatting                   |
+| lint    | markdownlint     | Structural Markdown issues (headings, lists, code fences)         |
+| lint    | codespell        | Common typos across all files                                     |
+| lint    | printf-check     | No bare `echo` usage in scripts (heredoc blocks exempt)           |
+| lint    | executable-check | Verify `+x` bit on scripts. Excludes `rails-cheatsheet.sh`        |
+| deploy  | mirror-github    | Force-pushes `main` and tags to GitHub                            |
+| release | release-gitlab   | Creates a GitLab release with notes from git-cliff (tag pushes)   |
+| release | release-github   | Creates a matching GitHub release via REST API (tag pushes)       |
 
 > Secret detection is handled by the `detect-secrets` pre-receive server hook, which blocks
 > pushes containing leaked credentials before they enter the repo. See
@@ -888,17 +901,64 @@ on `main`.
 Jobs may run on any registered runner. Tools required by CI jobs must be installed on **all**
 runner hosts:
 
-| Tool              | Required by   | Install method                     |
-| ----------------- | ------------- | ---------------------------------- |
-| shellcheck        | shellcheck    | `apt-get install shellcheck`       |
-| shfmt             | shfmt         | Binary from GitHub Releases        |
-| node + npm        | prettier      | NodeSource (Node 22 LTS)           |
-| markdownlint-cli2 | markdownlint  | `npm install -g markdownlint-cli2` |
-| codespell         | codespell     | `pip3 install codespell`           |
-| git               | mirror-github | `apt-get install git`              |
+| Tool              | Required by    | Install method                     |
+| ----------------- | -------------- | ---------------------------------- |
+| shellcheck        | shellcheck     | `apt-get install shellcheck`       |
+| shfmt             | shfmt          | Binary from GitHub Releases        |
+| node + npm        | prettier       | NodeSource (Node 22 LTS)           |
+| markdownlint-cli2 | markdownlint   | `npm install -g markdownlint-cli2` |
+| codespell         | codespell      | `pip3 install codespell`           |
+| git               | mirror-github  | `apt-get install git`              |
+| git-cliff         | release-gitlab | `npm install -g git-cliff`         |
+| release-cli       | release-gitlab | Binary from GitLab Releases        |
+| jq                | release-github | `apt-get install jq`               |
 
-The `runner-apps.sh` script installs most of these. Tools added after initial setup (shfmt,
-codespell, markdownlint-cli2) must be installed manually on each runner.
+The `runner-apps.sh` script installs most of these. Use `update-runners.sh` to install all tools
+on every runner in one command.
+
+### Releases
+
+Releases are created automatically when a semver tag (`v*.*.*`) is pushed. The release pipeline:
+
+1. `mirror-github` pushes the tag to GitHub
+2. `release-gitlab` uses [git-cliff](https://git-cliff.org/) to generate release notes from
+   Conventional Commit history, then creates a GitLab release via `release-cli`
+3. `release-github` creates a matching release on GitHub via the REST API
+
+Release notes are generated from git history (not from `CHANGELOG.md`), so the changelog file
+does not need to be updated before tagging. However, it is good practice to regenerate it:
+
+```bash
+# Preview what the next release notes will look like
+npm run changelog:preview
+
+# Auto-bump version based on commit types (feat=minor, fix=patch) and update CHANGELOG.md
+npm run release
+
+# Or regenerate the full changelog for all tags
+npm run changelog
+```
+
+The release workflow:
+
+```bash
+# 1. Ensure all changes are committed and pushed to main
+# 2. Regenerate the changelog with the new version
+npm run release
+# 3. Commit the changelog update
+jj describe -m "docs: update changelog for vX.Y.Z"
+jj new
+# 4. Tag the release
+jj bookmark set main -r @-
+jj tag set vX.Y.Z -r main
+# 5. Push (the tag triggers the release pipeline)
+jj git push --bookmark main
+git push origin vX.Y.Z
+```
+
+The `cliff.toml` config controls changelog formatting: Keep a Changelog section names,
+Conventional Commit type grouping, author attribution, and commit SHA links to the self-hosted
+GitLab instance.
 
 ---
 

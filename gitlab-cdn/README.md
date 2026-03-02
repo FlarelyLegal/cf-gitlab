@@ -58,21 +58,32 @@ Then generate `wrangler.jsonc`:
 ./generate-wrangler.sh --dry-run  # preview without writing
 ```
 
-### 3. Deploy
+### 3. Generate a shared auth token
+
+The CDN Worker authenticates requests to GitLab using a shared secret token. Both the Worker
+and GitLab must be configured with the same value. Generate a random token:
+
+```bash
+openssl rand -hex 16
+```
+
+Save the output (a 32-character hex string). You will use it in step 3 and step 4.
+
+### 4. Deploy
 
 ```bash
 npm install
 ./generate-wrangler.sh                  # generate wrangler.jsonc
 npm run deploy
-npx wrangler secret put STORAGE_TOKEN   # set the shared auth token
+npx wrangler secret put STORAGE_TOKEN   # paste the token from step 3
 ```
 
-### 4. Enable in GitLab
+### 5. Enable in GitLab
 
 Admin → Settings → Repository → **Static Objects External Storage**:
 
 - **URL:** `https://cdn.gitlab.example.com`
-- **Token:** same value as `STORAGE_TOKEN`
+- **Token:** paste the same token from step 3
 
 This tells GitLab to rewrite raw file and archive download URLs to point at the CDN Worker instead of serving them directly.
 
@@ -82,7 +93,7 @@ This tells GitLab to rewrite raw file and archive download URLs to point at the 
 | --------------- | --------------------------------------------------- |
 | `STORAGE_TOKEN` | Shared auth token between GitLab and the CDN Worker |
 
-Set via `npx wrangler secret put STORAGE_TOKEN`. Also configured in GitLab admin (Step 4 above).
+Generate with `openssl rand -hex 16`. Set on the Worker via `npx wrangler secret put STORAGE_TOKEN`. The same value must be entered in GitLab admin (Step 5 above).
 
 ## Environment Variables
 
