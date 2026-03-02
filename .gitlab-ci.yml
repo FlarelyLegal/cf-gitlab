@@ -12,4 +12,5 @@ stages:
 
 include:
   - local: .gitlab/ci/shellcheck.yml
+  - local: .gitlab/ci/prettier.yml
   - local: .gitlab/ci/deploy.yml

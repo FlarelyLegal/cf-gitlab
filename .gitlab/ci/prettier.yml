@@ -1,0 +1,11 @@
+# ─── Prettier ───────────────────────────────────────────────────────────────
+# Check formatting of Markdown, JSON, TypeScript, and YAML files.
+# Fails if any file does not match Prettier code style.
+prettier:
+  stage: lint
+  script:
+    - printf "Prettier %s\n" "$(npx prettier --version)"
+    - npx prettier --check "**/*.{md,json,ts,yml,yaml}" --ignore-path .gitignore
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
