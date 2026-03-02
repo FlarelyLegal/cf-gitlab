@@ -200,7 +200,7 @@ NPM_TO_INSTALL=()
 
 while IFS= read -r pkg; do
   if is_npm_installed "${pkg}"; then
-    INSTALLED_VER=$(npm list -g --depth=0 "${pkg}" 2>/dev/null | grep "${pkg}@" | sed "s/.*${pkg}@//" | tr -d '[:space:]')
+    INSTALLED_VER=$(npm list -g --depth=0 "${pkg}" 2>/dev/null | grep "${pkg}@" | sed "s#.*${pkg}@##" | tr -d '[:space:]')
     printf '%s\n' "  ✓ ${pkg}@${INSTALLED_VER}"
   else
     printf '%s\n' "  ○ ${pkg} (will install)"
@@ -223,6 +223,74 @@ else
 fi
 printf '\n'
 
+# ─── 5. pip packages ─────────────────────────────────────────────────────────
+if jq -e '.pip' "${MANIFEST}" >/dev/null 2>&1; then
+  printf '%s\n' "── pip Packages ──"
+  PIP_TO_INSTALL=()
+
+  while IFS= read -r pkg; do
+    if pip3 show "${pkg}" >/dev/null 2>&1; then
+      INSTALLED_VER=$(pip3 show "${pkg}" 2>/dev/null | grep '^Version:' | cut -d' ' -f2)
+      printf '%s\n' "  ✓ ${pkg}==${INSTALLED_VER}"
+    else
+      printf '%s\n' "  ○ ${pkg} (will install)"
+      PIP_TO_INSTALL+=("${pkg}")
+    fi
+  done < <(jq -r '.pip.packages[].name' "${MANIFEST}")
+
+  if [[ ${#PIP_TO_INSTALL[@]} -gt 0 ]]; then
+    if ${DRY_RUN}; then
+      printf '\n'
+      printf '%s\n' "  Would run: pip3 install --break-system-packages ${PIP_TO_INSTALL[*]}"
+    else
+      printf '\n'
+      printf '%s\n' "→ Installing ${#PIP_TO_INSTALL[@]} pip packages..."
+      pip3 install --break-system-packages "${PIP_TO_INSTALL[@]}" >/dev/null
+      printf '%s\n' "✓ pip packages installed"
+    fi
+  else
+    printf '%s\n' "  All pip packages already installed"
+  fi
+  printf '\n'
+fi
+
+# ─── 6. Standalone binaries ──────────────────────────────────────────────────
+if jq -e '.binary' "${MANIFEST}" >/dev/null 2>&1; then
+  printf '%s\n' "── Standalone Binaries ──"
+
+  while IFS= read -r entry; do
+    pkg=$(printf '%s' "${entry}" | jq -r '.name')
+    want_ver=$(printf '%s' "${entry}" | jq -r '.version // empty')
+    pkg_url=$(printf '%s' "${entry}" | jq -r '.url // empty')
+
+    if command -v "${pkg}" >/dev/null 2>&1; then
+      current_ver=$("${pkg}" --version 2>&1 | head -1 | sed 's/^v//')
+      printf '%s\n' "  ✓ ${pkg} ${current_ver} (installed)"
+      if [[ -n "${want_ver}" && "${current_ver}" != "${want_ver}" ]]; then
+        printf '%s\n' "  ⚠ Manifest wants ${want_ver}, currently ${current_ver}"
+      fi
+    else
+      printf '%s\n' "  ○ ${pkg} (not installed)"
+      if [[ "${pkg}" == "shfmt" && -n "${want_ver}" ]]; then
+        ARCH=$(dpkg --print-architecture)
+        SHFMT_URL="https://github.com/mvdan/sh/releases/download/v${want_ver}/shfmt_v${want_ver}_linux_${ARCH}"
+        if ${DRY_RUN}; then
+          printf '%s\n' "  Would download: ${SHFMT_URL} → /usr/local/bin/shfmt"
+        else
+          printf '%s\n' "→ Installing shfmt v${want_ver}..."
+          curl -fsSL "${SHFMT_URL}" -o /usr/local/bin/shfmt
+          chmod +x /usr/local/bin/shfmt
+          printf '%s\n' "✓ shfmt v${want_ver} installed"
+        fi
+      else
+        printf '%s\n' "  ⚠ No automatic installer for ${pkg}. Install manually from: ${pkg_url}"
+      fi
+    fi
+  done < <(jq -c '.binary.packages[]' "${MANIFEST}")
+
+  printf '\n'
+fi
+
 # ─── Summary ──────────────────────────────────────────────────────────────────
 trap - ERR
 
@@ -232,10 +300,12 @@ else
   printf '%s\n' "════════════════════════════════════════════════════"
   printf '%s\n' "  Runner apps installed"
   printf '\n'
-  printf '%s\n' "  APT:    $(jq '.apt.packages | length' "${MANIFEST}") packages"
-  printf '%s\n' "  Docker: $(docker --version 2>/dev/null | cut -d, -f1 || printf 'not found')"
-  printf '%s\n' "  Node:   $(node --version 2>/dev/null || printf 'not found')"
-  printf '%s\n' "  npm:    $(npm --version 2>/dev/null || printf 'not found')"
-  printf '%s\n' "  Global: $(jq '.npm_global.packages | length' "${MANIFEST}") npm packages"
+  printf '%s\n' "  APT:      $(jq '.apt.packages | length' "${MANIFEST}") packages"
+  printf '%s\n' "  Docker:   $(docker --version 2>/dev/null | cut -d, -f1 || printf 'not found')"
+  printf '%s\n' "  Node:     $(node --version 2>/dev/null || printf 'not found')"
+  printf '%s\n' "  npm:      $(npm --version 2>/dev/null || printf 'not found')"
+  printf '%s\n' "  Global:   $(jq '.npm_global.packages | length' "${MANIFEST}") npm packages"
+  printf '%s\n' "  pip:      $(jq '.pip.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') packages"
+  printf '%s\n' "  Binaries: $(jq '.binary.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') standalone"
   printf '%s\n' "════════════════════════════════════════════════════"
 fi
