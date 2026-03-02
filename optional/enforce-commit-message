@@ -40,6 +40,11 @@ MERGE_PATTERN="^Merge "
 # Zero SHA for branch creation/deletion
 ZERO_SHA="0000000000000000000000000000000000000000"
 
+# Skip snippet repositories (GitLab uses non-conventional messages like "Initial commit")
+if [[ "${GL_REPOSITORY:-}" == snippet-* ]]; then
+  exit 0
+fi
+
 EXIT_CODE=0
 
 while read -r old_sha new_sha ref; do
