@@ -1,4 +1,4 @@
-# cf-gitlab
+# Self-Hosted GitLab with Cloudflare
 
 [![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/)
 [![Cloudflare Workers](https://img.shields.io/badge/Workers-F38020?logo=cloudflareworkers&logoColor=white)](https://developers.cloudflare.com/workers/)
