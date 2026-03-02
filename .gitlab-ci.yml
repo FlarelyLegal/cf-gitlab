@@ -8,6 +8,7 @@
 
 stages:
   - lint
+  - deploy
 
 # ─── ShellCheck ─────────────────────────────────────────────────────────────
 # Lint all shell scripts with shellcheck. Fails on any warning or error.
@@ -38,3 +39,15 @@ shellcheck:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# ─── GitHub Mirror ──────────────────────────────────────────────────────────
+# Push main branch to GitHub after successful lint.
+# Requires GITHUB_TOKEN CI/CD variable (fine-grained PAT, masked + protected).
+mirror-github:
+  stage: deploy
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - git push --force "https://${GITHUB_TOKEN}@github.com/FlarelyLegal/cf-gitlab.git" HEAD:main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
