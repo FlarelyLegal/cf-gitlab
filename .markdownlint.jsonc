@@ -1,0 +1,8 @@
+{
+  // Disable line length - Prettier handles wrapping
+  "MD013": false,
+  // Allow first line to be a back-link instead of heading
+  "MD041": false,
+  // Allow blank lines inside blockquotes (used for multi-paragraph notes)
+  "MD028": false,
+}

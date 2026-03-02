@@ -67,7 +67,8 @@ printf '\n'
 # ─── Build the rule payload ──────────────────────────────────────────────────
 # 20 requests per 60 seconds per IP per colo — generous for monitoring,
 # blocks sustained abuse. Mitigation lasts 60 seconds.
-PAYLOAD=$(cat <<JSON
+PAYLOAD=$(
+  cat <<JSON
 {
   "rules": [
     {

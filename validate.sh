@@ -37,9 +37,18 @@ PASS=0
 WARN=0
 FAIL=0
 
-pass() { printf '%s\n' "  ✓ $1"; ((PASS++)) || true; }
-warn() { printf '%s\n' "  ⚠ $1"; ((WARN++)) || true; }
-fail() { printf '%s\n' "  ✗ $1"; ((FAIL++)) || true; }
+pass() {
+  printf '%s\n' "  ✓ $1"
+  ((PASS++)) || true
+}
+warn() {
+  printf '%s\n' "  ⚠ $1"
+  ((WARN++)) || true
+}
+fail() {
+  printf '%s\n' "  ✗ $1"
+  ((FAIL++)) || true
+}
 
 # ─── Resolve paths ───────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

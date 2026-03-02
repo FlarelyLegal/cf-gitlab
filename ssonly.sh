@@ -95,7 +95,7 @@ if ${REVERT}; then
   sed -i "/omniauth_auto_sign_in_with_provider/d" /etc/gitlab/gitlab.rb
 
   printf '%s\n' "→ Reconfiguring GitLab..."
-  gitlab-ctl reconfigure > /tmp/gitlab-reconfigure.log 2>&1 || {
+  gitlab-ctl reconfigure >/tmp/gitlab-reconfigure.log 2>&1 || {
     printf '%s\n' "✗ Reconfigure failed. See /tmp/gitlab-reconfigure.log"
     exit 1
   }
@@ -129,7 +129,7 @@ if [[ "${AUTO_SIGNIN}" != "openid_connect" ]]; then
 gitlab_rails['omniauth_auto_sign_in_with_provider'] = 'openid_connect'" /etc/gitlab/gitlab.rb
 
   printf '%s\n' "→ Reconfiguring GitLab (this may take a moment)..."
-  gitlab-ctl reconfigure > /tmp/gitlab-reconfigure.log 2>&1 || {
+  gitlab-ctl reconfigure >/tmp/gitlab-reconfigure.log 2>&1 || {
     printf '%s\n' "✗ Reconfigure failed. See /tmp/gitlab-reconfigure.log"
     exit 1
   }

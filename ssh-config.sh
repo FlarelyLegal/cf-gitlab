@@ -71,7 +71,7 @@ done
 
 # ─── Derive values ───────────────────────────────────────────────────────────
 SSH_HOSTNAME="ssh.${GITLAB_DOMAIN}"
-LXC_IP="${LXC_HOST#*@}"  # strip user@ prefix (root@x.x.x.x → x.x.x.x)
+LXC_IP="${LXC_HOST#*@}" # strip user@ prefix (root@x.x.x.x → x.x.x.x)
 
 SSH_CONFIG="${HOME}/.ssh/config"
 KNOWN_HOSTS="${HOME}/.ssh/known_hosts"
@@ -110,9 +110,9 @@ add_ssh_block() {
   else
     # Add a blank line separator if file exists and doesn't end with newline
     if [[ -f "${SSH_CONFIG}" ]] && [[ -s "${SSH_CONFIG}" ]]; then
-      printf '\n' >> "${SSH_CONFIG}"
+      printf '\n' >>"${SSH_CONFIG}"
     fi
-    printf '%s\n' "${block}" >> "${SSH_CONFIG}"
+    printf '%s\n' "${block}" >>"${SSH_CONFIG}"
     printf '%s\n' "ADDED: ${description}"
   fi
 }
@@ -154,7 +154,7 @@ else
       printf '%s\n' "[DRY RUN] Would add to ${KNOWN_HOSTS}:"
       printf '%s\n' "  ${TUNNEL_KEY}"
     else
-      printf '%s\n' "${TUNNEL_KEY}" >> "${KNOWN_HOSTS}"
+      printf '%s\n' "${TUNNEL_KEY}" >>"${KNOWN_HOSTS}"
       printf '%s\n' "ADDED: Host key for ${SSH_HOSTNAME}"
     fi
   fi

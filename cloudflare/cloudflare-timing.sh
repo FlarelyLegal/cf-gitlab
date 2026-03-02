@@ -60,14 +60,14 @@ else
     exit 1
   fi
   ln -sf "/usr/share/zoneinfo/${TZ_VALUE}" /etc/localtime
-  printf '%s\n' "${TZ_VALUE}" > /etc/timezone
+  printf '%s\n' "${TZ_VALUE}" >/etc/timezone
   printf '%s\n' "✓ Timezone set to ${TZ_VALUE} (zoneinfo fallback)"
 fi
 
 # ─── Step 2: Install chrony ──────────────────────────────────────────────────
 printf '%s\n' "→ Installing chrony..."
 apt-get update -qq
-apt-get install -y -qq chrony > /dev/null
+apt-get install -y -qq chrony >/dev/null
 printf '%s\n' "✓ chrony installed"
 
 # ─── Step 3: Back up existing config ─────────────────────────────────────────

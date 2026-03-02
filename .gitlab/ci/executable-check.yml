@@ -1,0 +1,27 @@
+# ─── Executable Check ───────────────────────────────────────────────────────
+# Verify all .sh files and hook scripts have the executable bit set.
+executable-check:
+  stage: lint
+  script:
+    - |
+      FAIL=0
+      FILES=$(find . -name '*.sh' -not -name 'rails-cheatsheet.sh' \
+        -not -path '*/node_modules/*' -not -path '*/.git/*' | sort)
+      HOOKS="./optional/detect-secrets ./optional/enforce-branch-naming \
+        ./optional/block-file-extensions ./optional/enforce-commit-message"
+      for f in $FILES $HOOKS; do
+        if [ -x "$f" ]; then
+          printf "  ✓ %s\n" "$f"
+        else
+          printf "  ✗ %s (not executable)\n" "$f"
+          FAIL=1
+        fi
+      done
+      if [ "$FAIL" -eq 1 ]; then
+        printf "\nSome scripts are missing the executable bit. Run: chmod +x <file>\n"
+        exit 1
+      fi
+      printf "\nAll scripts are executable.\n"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

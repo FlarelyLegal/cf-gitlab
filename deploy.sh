@@ -32,9 +32,9 @@ set +a
 
 # ─── Validate required variables ──────────────────────────────────────────────
 for var in LXC_HOST GITLAB_DOMAIN GITLAB_ROOT_EMAIL GITLAB_ROOT_PASSWORD ORG_NAME ORG_URL \
-           CF_API_TOKEN CERT_EMAIL REGISTRY_DOMAIN PAGES_DOMAIN INTERNAL_DNS SSH_ALLOW_CIDR \
-           TIMEZONE OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET GITHUB_APP_ID GITHUB_APP_SECRET \
-           R2_ENDPOINT R2_ACCESS_KEY R2_SECRET_KEY R2_BUCKET_PREFIX RUNNER_NAME RUNNER_TAGS; do
+  CF_API_TOKEN CERT_EMAIL REGISTRY_DOMAIN PAGES_DOMAIN INTERNAL_DNS SSH_ALLOW_CIDR \
+  TIMEZONE OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET GITHUB_APP_ID GITHUB_APP_SECRET \
+  R2_ENDPOINT R2_ACCESS_KEY R2_SECRET_KEY R2_BUCKET_PREFIX RUNNER_NAME RUNNER_TAGS; do
   if [[ -z "${!var:-}" ]]; then
     printf '%s\n' "✗ Missing ${var} in .env"
     exit 1
@@ -114,46 +114,46 @@ trap cleanup EXIT
 
 _env() { printf '%s=%q\n' "$1" "$2"; }
 {
-  _env GITLAB_DOMAIN      "${GITLAB_DOMAIN}"
-  _env GITLAB_ROOT_EMAIL  "${GITLAB_ROOT_EMAIL}"
+  _env GITLAB_DOMAIN "${GITLAB_DOMAIN}"
+  _env GITLAB_ROOT_EMAIL "${GITLAB_ROOT_EMAIL}"
   _env GITLAB_ROOT_PASSWORD "${GITLAB_ROOT_PASSWORD}"
-  _env ORG_NAME           "${ORG_NAME}"
-  _env ORG_URL            "${ORG_URL}"
-  _env CERT_EMAIL         "${CERT_EMAIL}"
-  _env REGISTRY_DOMAIN    "${REGISTRY_DOMAIN}"
-  _env PAGES_DOMAIN       "${PAGES_DOMAIN}"
-  _env INTERNAL_DNS       "${INTERNAL_DNS}"
-  _env SSH_ALLOW_CIDR     "${SSH_ALLOW_CIDR}"
-  _env TIMEZONE           "${TIMEZONE}"
-  _env OIDC_ISSUER        "${OIDC_ISSUER}"
-  _env OIDC_CLIENT_ID     "${OIDC_CLIENT_ID}"
+  _env ORG_NAME "${ORG_NAME}"
+  _env ORG_URL "${ORG_URL}"
+  _env CERT_EMAIL "${CERT_EMAIL}"
+  _env REGISTRY_DOMAIN "${REGISTRY_DOMAIN}"
+  _env PAGES_DOMAIN "${PAGES_DOMAIN}"
+  _env INTERNAL_DNS "${INTERNAL_DNS}"
+  _env SSH_ALLOW_CIDR "${SSH_ALLOW_CIDR}"
+  _env TIMEZONE "${TIMEZONE}"
+  _env OIDC_ISSUER "${OIDC_ISSUER}"
+  _env OIDC_CLIENT_ID "${OIDC_CLIENT_ID}"
   _env OIDC_CLIENT_SECRET "${OIDC_CLIENT_SECRET}"
-  _env GITHUB_APP_ID      "${GITHUB_APP_ID}"
-  _env GITHUB_APP_SECRET  "${GITHUB_APP_SECRET}"
-  _env R2_ENDPOINT        "${R2_ENDPOINT}"
-  _env R2_ACCESS_KEY      "${R2_ACCESS_KEY}"
-  _env R2_SECRET_KEY      "${R2_SECRET_KEY}"
-  _env R2_BUCKET_PREFIX   "${R2_BUCKET_PREFIX}"
-  _env R2_BACKUP_BUCKET   "${R2_BACKUP_BUCKET:-${R2_BUCKET_PREFIX}-backups}"
-  _env RUNNER_NAME        "${RUNNER_NAME}"
-  _env RUNNER_TAGS        "${RUNNER_TAGS}"
-} > "${TMPDIR_SECRETS}/gitlab.env"
+  _env GITHUB_APP_ID "${GITHUB_APP_ID}"
+  _env GITHUB_APP_SECRET "${GITHUB_APP_SECRET}"
+  _env R2_ENDPOINT "${R2_ENDPOINT}"
+  _env R2_ACCESS_KEY "${R2_ACCESS_KEY}"
+  _env R2_SECRET_KEY "${R2_SECRET_KEY}"
+  _env R2_BUCKET_PREFIX "${R2_BUCKET_PREFIX}"
+  _env R2_BACKUP_BUCKET "${R2_BACKUP_BUCKET:-${R2_BUCKET_PREFIX}-backups}"
+  _env RUNNER_NAME "${RUNNER_NAME}"
+  _env RUNNER_TAGS "${RUNNER_TAGS}"
+} >"${TMPDIR_SECRETS}/gitlab.env"
 
-printf 'dns_cloudflare_api_token = %s\n' "${CF_API_TOKEN}" > "${TMPDIR_SECRETS}/cloudflare.ini"
+printf 'dns_cloudflare_api_token = %s\n' "${CF_API_TOKEN}" >"${TMPDIR_SECRETS}/cloudflare.ini"
 
 printf '%s\n' "→ Pushing secrets to LXC..."
-scp -q "${SSH_OPTS[@]}" "${TMPDIR_SECRETS}/gitlab.env"     "${LXC_HOST}:/root/.secrets/gitlab.env"
+scp -q "${SSH_OPTS[@]}" "${TMPDIR_SECRETS}/gitlab.env" "${LXC_HOST}:/root/.secrets/gitlab.env"
 scp -q "${SSH_OPTS[@]}" "${TMPDIR_SECRETS}/cloudflare.ini" "${LXC_HOST}:/root/.secrets/cloudflare.ini"
 ssh "${SSH_OPTS[@]}" "${LXC_HOST}" 'chmod 600 /root/.secrets/gitlab.env /root/.secrets/cloudflare.ini'
 printf '%s\n' "✓ Secrets deployed"
 
 # ─── 4. Push scripts to LXC ──────────────────────────────────────────────────
 printf '%s\n' "→ Copying scripts to LXC..."
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/setup.sh"                        "${LXC_HOST}:/tmp/gitlab-setup.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/motd.sh"                         "${LXC_HOST}:/tmp/gitlab-motd.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/banner.txt"               "${LXC_HOST}:/tmp/gitlab-banner.txt"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/setup.sh" "${LXC_HOST}:/tmp/gitlab-setup.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/motd.sh" "${LXC_HOST}:/tmp/gitlab-motd.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/banner.txt" "${LXC_HOST}:/tmp/gitlab-banner.txt"
 scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/cloudflare/cloudflare-timing.sh" "${LXC_HOST}:/tmp/gitlab-timing.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/chrony.conf"              "${LXC_HOST}:/tmp/gitlab-chrony.conf"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/chrony.conf" "${LXC_HOST}:/tmp/gitlab-chrony.conf"
 ssh "${SSH_OPTS[@]}" "${LXC_HOST}" 'chmod +x /tmp/gitlab-setup.sh /tmp/gitlab-motd.sh /tmp/gitlab-timing.sh'
 printf '%s\n' "✓ Scripts copied"
 

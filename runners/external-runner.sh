@@ -93,18 +93,18 @@ ${ASCII_BANNER}
   Hostname:      ${LXC_HOSTNAME}
   IP Address:    ${LXC_IP}
   OS:            ${LXC_OS}
-" > /etc/motd
+" >/etc/motd
 printf '%s\n' "✓ MOTD set"
 
 # ─── Step 2: UFW ─────────────────────────────────────────────────────────────
 printf '%s\n' "→ Configuring UFW..."
 apt-get update -qq
-apt-get install -y -qq ufw > /dev/null
+apt-get install -y -qq ufw >/dev/null
 
-ufw default deny incoming > /dev/null 2>&1
-ufw default allow outgoing > /dev/null 2>&1
-ufw allow from "${SSH_ALLOW_CIDR}" to any port 22 proto tcp > /dev/null 2>&1
-ufw --force enable > /dev/null 2>&1
+ufw default deny incoming >/dev/null 2>&1
+ufw default allow outgoing >/dev/null 2>&1
+ufw allow from "${SSH_ALLOW_CIDR}" to any port 22 proto tcp >/dev/null 2>&1
+ufw --force enable >/dev/null 2>&1
 printf '%s\n' "✓ UFW enabled (SSH from ${SSH_ALLOW_CIDR}, default deny incoming)"
 
 # ─── Step 3: Add GitLab Runner repository ────────────────────────────────────

@@ -6,7 +6,7 @@
 [![Zero Trust](https://img.shields.io/badge/Zero%20Trust-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/)
 [![GitLab CE](https://img.shields.io/badge/GitLab%20CE-FC6D26?logo=gitlab&logoColor=white)](https://about.gitlab.com/)
 [![Debian 13](https://img.shields.io/badge/Debian%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org/)
-[![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white)](#)
+[![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
 
 Deploys a fully configured GitLab CE instance on a Debian 13 LXC with:
@@ -201,7 +201,7 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ## Repository Structure
 
-```
+```text
 .
 ├── setup.sh                  Core: server-side LXC provisioning
 ├── deploy.sh                 Core: local orchestrator (pushes secrets + scripts, runs setup.sh)
@@ -319,7 +319,7 @@ This will:
 
 Example output:
 
-```
+```text
 ── DRY RUN (no changes will be made) ──
 
 ✓ SSH connected
@@ -561,7 +561,7 @@ ssh root@<LXC_IP> 'bash /tmp/ssonly.sh --revert'
 
 **Bypass auto sign-in** (to reach the manual login page):
 
-```
+```text
 https://gitlab.example.com/users/sign_in?auto_sign_in=false
 ```
 
@@ -648,12 +648,12 @@ bandwidth from the GitLab instance. It connects to the private origin via a
 [Workers VPC Service Binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/)
 through the same `cloudflared` tunnel from Step 4 — the origin is never exposed publicly.
 
-```
+```text
 User → cdn.gitlab.example.com → Cloudflare Edge (cached)
          ↓ (cache miss)
        CDN Worker → VPC Service Binding → cloudflared tunnel → GitLab nginx
-                                                                  ↓ (proxy_download)
-                                                                 R2
+                                                                   ↓ (proxy_download)
+                                                                  R2
 ```
 
 **10a. Deploy the CDN Worker:**

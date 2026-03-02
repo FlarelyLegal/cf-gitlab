@@ -65,7 +65,8 @@ printf '\n'
 
 # ─── Build the ruleset payload ────────────────────────────────────────────────
 # Rules are evaluated in order. The skip rule must come before the block rule.
-PAYLOAD=$(cat <<JSON
+PAYLOAD=$(
+  cat <<JSON
 {
   "rules": [
     {

@@ -1,0 +1,11 @@
+# ─── Markdownlint ───────────────────────────────────────────────────────────
+# Lint Markdown files for structural issues beyond what Prettier catches.
+# Config in .markdownlint.jsonc at repo root.
+markdownlint:
+  stage: lint
+  script:
+    - printf "markdownlint-cli2 %s\n" "$(markdownlint-cli2 --version 2>&1 | head -1)"
+    - markdownlint-cli2 "**/*.md" "#**/node_modules/**"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

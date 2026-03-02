@@ -73,16 +73,16 @@ printf '%s\n' "✓ Chrony configured"
 # ─── Step 3: Packages + UFW Firewall ─────────────────────────────────────
 printf '%s\n' "→ Installing packages (ufw, curl, certbot)..."
 apt-get update -qq
-apt-get install -y -qq ufw curl certbot python3-certbot-dns-cloudflare > /dev/null
+apt-get install -y -qq ufw curl certbot python3-certbot-dns-cloudflare >/dev/null
 printf '%s\n' "✓ Packages installed"
 
 printf '%s\n' "→ Configuring UFW firewall..."
-ufw default deny incoming > /dev/null
-ufw default allow outgoing > /dev/null
-ufw allow 80/tcp  > /dev/null
-ufw allow 443/tcp > /dev/null
-ufw allow from "${SSH_ALLOW_CIDR}" to any port 22 proto tcp > /dev/null
-printf '%s\n' "y" | ufw enable > /dev/null
+ufw default deny incoming >/dev/null
+ufw default allow outgoing >/dev/null
+ufw allow 80/tcp >/dev/null
+ufw allow 443/tcp >/dev/null
+ufw allow from "${SSH_ALLOW_CIDR}" to any port 22 proto tcp >/dev/null
+printf '%s\n' "y" | ufw enable >/dev/null
 printf '%s\n' "✓ UFW enabled (default deny, 80, 443, SSH from ${SSH_ALLOW_CIDR})"
 
 # ─── Step 4: TLS Certificates ────────────────────────────────────────────
@@ -158,7 +158,7 @@ R2_SECRET_KEY_RB="$(ruby_escape "${R2_SECRET_KEY}")"
 R2_BUCKET_PREFIX_RB="$(ruby_escape "${R2_BUCKET_PREFIX}")"
 R2_BACKUP_BUCKET_RB="$(ruby_escape "${R2_BACKUP_BUCKET:-${R2_BUCKET_PREFIX}-backups}")"
 
-cat > /etc/gitlab/gitlab.rb <<RUBY
+cat >/etc/gitlab/gitlab.rb <<RUBY
 external_url "https://${GITLAB_DOMAIN_RB}"
 
 # LXC: cannot modify kernel parameters from inside a container
@@ -286,8 +286,8 @@ printf '%s\n' "✓ Pre-seeded /etc/gitlab/gitlab.rb"
 printf '%s\n' "→ Installing GitLab CE (this may take several minutes)..."
 # Validate password: auto-generate if placeholder, too short, or missing.
 if [[ -z "${GITLAB_ROOT_PASSWORD:-}" ]] \
-   || [[ "${GITLAB_ROOT_PASSWORD}" == *"<"* ]] \
-   || [[ ${#GITLAB_ROOT_PASSWORD} -lt 12 ]]; then
+  || [[ "${GITLAB_ROOT_PASSWORD}" == *"<"* ]] \
+  || [[ ${#GITLAB_ROOT_PASSWORD} -lt 12 ]]; then
   GITLAB_ROOT_PASSWORD="$(openssl rand -base64 18 | tr -d '/+=')"
   export GITLAB_ROOT_PASSWORD
   printf '%s\n' "⚠ Password missing or too weak — auto-generated (saved to /root/.secrets/initial_root_password)"
@@ -304,7 +304,7 @@ fi
 printf '%s\n' "✓ GitLab CE installed"
 
 # Persist the root password to a secure file (especially important for auto-generated ones)
-printf '%s\n' "${GITLAB_ROOT_PASSWORD}" > /root/.secrets/initial_root_password
+printf '%s\n' "${GITLAB_ROOT_PASSWORD}" >/root/.secrets/initial_root_password
 chmod 600 /root/.secrets/initial_root_password
 
 # ─── Step 8: Ensure DB seed (creates admin user) ────────────────────────────
@@ -323,7 +323,7 @@ fi
 # ─── Step 9: Certbot renewal hook ────────────────────────────────────────────
 # Reload GitLab nginx after cert renewal so it picks up the new cert.
 mkdir -p /etc/letsencrypt/renewal-hooks/deploy
-cat > /etc/letsencrypt/renewal-hooks/deploy/gitlab-nginx.sh <<'HOOK'
+cat >/etc/letsencrypt/renewal-hooks/deploy/gitlab-nginx.sh <<'HOOK'
 #!/usr/bin/env bash
 gitlab-ctl hup nginx
 HOOK
@@ -332,14 +332,14 @@ printf '%s\n' "✓ Certbot renewal hook installed"
 
 # ─── Step 10: Registry Garbage Collection cron ─────────────────────────────────
 printf '%s\n' "→ Installing weekly registry GC cron..."
-cat > /etc/cron.d/registry-gc <<'CRON'
+cat >/etc/cron.d/registry-gc <<'CRON'
 # Weekly registry garbage collection (Sunday 3am)
 0 3 * * 0 root /usr/bin/gitlab-ctl registry-garbage-collect -m >> /var/log/gitlab/registry-gc.log 2>&1
 CRON
 printf '%s\n' "✓ Registry GC cron installed (Sunday 3am)"
 
 # Logrotate for the GC log (weekly, keep 4 rotations, compress old files)
-cat > /etc/logrotate.d/registry-gc <<'LOGROTATE'
+cat >/etc/logrotate.d/registry-gc <<'LOGROTATE'
 /var/log/gitlab/registry-gc.log {
     weekly
     rotate 4
@@ -353,7 +353,7 @@ printf '%s\n' "✓ Registry GC logrotate installed"
 # ─── Step 11: Daily backup cron ───────────────────────────────────────────────
 printf '%s\n' "→ Installing daily backup cron..."
 
-cat > /usr/local/bin/gitlab-backup-all <<'BACKUP_SCRIPT'
+cat >/usr/local/bin/gitlab-backup-all <<'BACKUP_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 # Daily GitLab backup: DB + repos → R2, config files → /var/opt/gitlab/backups/
@@ -377,14 +377,14 @@ printf '%s\n' "═══ Backup finished: $(date -Iseconds) ═══"
 BACKUP_SCRIPT
 chmod +x /usr/local/bin/gitlab-backup-all
 
-cat > /etc/cron.d/gitlab-backup <<'CRON'
+cat >/etc/cron.d/gitlab-backup <<'CRON'
 # Daily GitLab backup (2am) — DB + repos to R2, config files to local archive
 0 2 * * * root /usr/local/bin/gitlab-backup-all
 CRON
 printf '%s\n' "✓ Daily backup cron installed (2am)"
 
 # Logrotate for backup log
-cat > /etc/logrotate.d/gitlab-backup <<'LOGROTATE'
+cat >/etc/logrotate.d/gitlab-backup <<'LOGROTATE'
 /var/log/gitlab/backup.log {
     weekly
     rotate 4

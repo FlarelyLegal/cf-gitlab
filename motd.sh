@@ -58,5 +58,5 @@ fi
 
 # ─── Write MOTD ──────────────────────────────────────────────────────────
 printf '%s\n' "→ Writing /etc/motd..."
-printf '%s\n' "${MOTD_CONTENT}" > /etc/motd
+printf '%s\n' "${MOTD_CONTENT}" >/etc/motd
 printf '%s\n' "✓ MOTD set"

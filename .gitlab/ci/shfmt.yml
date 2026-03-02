@@ -1,0 +1,30 @@
+# ─── shfmt ──────────────────────────────────────────────────────────────────
+# Check shell script formatting. Fails if any file does not match shfmt style.
+# Options: -i 2 (indent 2), -ci (indent switch cases), -bn (binary ops start lines).
+shfmt:
+  stage: lint
+  script:
+    - printf "shfmt %s\n" "$(shfmt --version)"
+    - |
+      SCRIPTS=$(find . -name '*.sh' -not -name 'rails-cheatsheet.sh' \
+        -not -path '*/node_modules/*' -not -path '*/.git/*' | sort)
+      HOOKS="./optional/detect-secrets ./optional/enforce-branch-naming \
+        ./optional/block-file-extensions ./optional/enforce-commit-message"
+      FAIL=0
+      for f in $SCRIPTS $HOOKS; do
+        if shfmt -d -i 2 -ci -bn "$f" > /dev/null 2>&1; then
+          printf "  ✓ %s\n" "$f"
+        else
+          printf "  ✗ %s\n" "$f"
+          shfmt -d -i 2 -ci -bn "$f" || true
+          FAIL=1
+        fi
+      done
+      if [ "$FAIL" -eq 1 ]; then
+        printf "\nshfmt found formatting issues. Run: shfmt -w -i 2 -ci -bn <file>\n"
+        exit 1
+      fi
+      printf "\nAll scripts formatted correctly.\n"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

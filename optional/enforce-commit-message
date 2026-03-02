@@ -81,7 +81,7 @@ while read -r old_sha new_sha ref; do
       SHORT_SHA="${sha:0:8}"
       BAD_COMMITS+=("${SHORT_SHA}  ${MSG}")
     fi
-  done <<< "${COMMITS}"
+  done <<<"${COMMITS}"
 
   if [[ ${#BAD_COMMITS[@]} -gt 0 ]]; then
     printf '\n' >&2

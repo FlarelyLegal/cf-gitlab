@@ -12,6 +12,10 @@ stages:
 
 include:
   - local: .gitlab/ci/shellcheck.yml
+  - local: .gitlab/ci/shfmt.yml
   - local: .gitlab/ci/prettier.yml
+  - local: .gitlab/ci/markdownlint.yml
+  - local: .gitlab/ci/codespell.yml
   - local: .gitlab/ci/printf-check.yml
+  - local: .gitlab/ci/executable-check.yml
   - local: .gitlab/ci/deploy.yml

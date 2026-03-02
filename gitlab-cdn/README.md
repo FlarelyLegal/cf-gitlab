@@ -6,7 +6,7 @@ Cloudflare Worker that acts as a caching CDN proxy for GitLab static objects (ra
 
 ## Architecture
 
-```
+```text
 User → Cloudflare Edge (cached) → VPC Service Binding → cloudflared tunnel → GitLab nginx → R2
 ```
 

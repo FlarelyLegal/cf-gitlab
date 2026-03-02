@@ -87,7 +87,7 @@ if [[ -n "${EXISTING_RUNNER}" && "${EXISTING_RUNNER}" =~ ^[0-9]+$ ]]; then
 fi
 
 printf '%s\n' "→ Creating runner token via Rails console (this takes ~45s to load)..."
-cat > /tmp/create-runner.rb <<'RUBY'
+cat >/tmp/create-runner.rb <<'RUBY'
 runner = Ci::Runner.create!(
   runner_type: :instance_type,
   description: ENV.fetch("GL_RUNNER_NAME"),
@@ -99,7 +99,7 @@ puts "TOKEN=#{runner.token}"
 puts "ID=#{runner.id}"
 RUBY
 
-GL_RUNNER_NAME="${RUNNER_NAME}" GL_RUNNER_TAGS="${RUNNER_TAGS}" gitlab-rails runner /tmp/create-runner.rb > /tmp/runner-output.txt 2>&1
+GL_RUNNER_NAME="${RUNNER_NAME}" GL_RUNNER_TAGS="${RUNNER_TAGS}" gitlab-rails runner /tmp/create-runner.rb >/tmp/runner-output.txt 2>&1
 RUNNER_TOKEN="$(grep '^TOKEN=' /tmp/runner-output.txt | cut -d= -f2)"
 RUNNER_ID="$(grep '^ID=' /tmp/runner-output.txt | cut -d= -f2)"
 

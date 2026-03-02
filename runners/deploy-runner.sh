@@ -125,14 +125,14 @@ trap cleanup EXIT
 
 _env() { printf '%s=%q\n' "$1" "$2"; }
 {
-  _env GITLAB_DOMAIN      "${GITLAB_DOMAIN}"
-  _env GITLAB_PAT         "${RUNNER_GITLAB_PAT}"
-  _env RUNNER_NAME        "${RUNNER_RUNNER_NAME}"
-  _env RUNNER_TAGS        "${RUNNER_RUNNER_TAGS}"
-  _env SSH_ALLOW_CIDR     "${RUNNER_SSH_ALLOW_CIDR}"
-  _env ORG_NAME           "${ORG_NAME}"
-  _env ORG_URL            "${ORG_URL}"
-} > "${TMPDIR_SECRETS}/runner.env"
+  _env GITLAB_DOMAIN "${GITLAB_DOMAIN}"
+  _env GITLAB_PAT "${RUNNER_GITLAB_PAT}"
+  _env RUNNER_NAME "${RUNNER_RUNNER_NAME}"
+  _env RUNNER_TAGS "${RUNNER_RUNNER_TAGS}"
+  _env SSH_ALLOW_CIDR "${RUNNER_SSH_ALLOW_CIDR}"
+  _env ORG_NAME "${ORG_NAME}"
+  _env ORG_URL "${ORG_URL}"
+} >"${TMPDIR_SECRETS}/runner.env"
 
 scp -q "${SSH_OPTS[@]}" "${TMPDIR_SECRETS}/runner.env" "${RUNNER_LXC_HOST}:/root/.secrets/runner.env"
 ssh "${SSH_OPTS[@]}" "${RUNNER_LXC_HOST}" 'chmod 600 /root/.secrets/runner.env'
@@ -140,10 +140,10 @@ printf '%s\n' "✓ Secrets deployed"
 
 # ─── Push scripts ─────────────────────────────────────────────────────────────
 printf '%s\n' "→ Copying scripts to runner LXC..."
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/external-runner.sh"  "${RUNNER_LXC_HOST}:/tmp/external-runner.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.sh"      "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.json"    "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
-scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/banner.txt"    "${RUNNER_LXC_HOST}:/tmp/runner-banner.txt"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/external-runner.sh" "${RUNNER_LXC_HOST}:/tmp/external-runner.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.sh" "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.json" "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
+scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/banner.txt" "${RUNNER_LXC_HOST}:/tmp/runner-banner.txt"
 ssh "${SSH_OPTS[@]}" "${RUNNER_LXC_HOST}" 'chmod +x /tmp/external-runner.sh /tmp/runner-apps.sh'
 printf '%s\n' "✓ Scripts copied"
 

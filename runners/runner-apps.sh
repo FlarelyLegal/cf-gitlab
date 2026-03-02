@@ -42,7 +42,7 @@ if ! command -v jq >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
   else
     printf '%s\n' "→ Bootstrap: installing jq + curl..."
     apt-get update -qq
-    apt-get install -y -qq jq curl > /dev/null
+    apt-get install -y -qq jq curl >/dev/null
     printf '%s\n' "✓ Bootstrap complete"
   fi
 fi
@@ -78,7 +78,7 @@ if [[ ${#APT_TO_INSTALL[@]} -gt 0 ]]; then
     printf '\n'
     printf '%s\n' "→ Installing ${#APT_TO_INSTALL[@]} apt packages..."
     apt-get update -qq
-    apt-get install -y -qq "${APT_TO_INSTALL[@]}" > /dev/null
+    apt-get install -y -qq "${APT_TO_INSTALL[@]}" >/dev/null
     printf '%s\n' "✓ APT packages installed"
   fi
 else
@@ -114,10 +114,10 @@ if [[ ${#DOCKER_TO_INSTALL[@]} -gt 0 ]]; then
     printf '%s\n' \
       "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
       $(. /etc/os-release && printf '%s' "${VERSION_CODENAME}") stable" \
-      > /etc/apt/sources.list.d/docker.list
+      >/etc/apt/sources.list.d/docker.list
     apt-get update -qq
     printf '%s\n' "→ Installing Docker packages..."
-    apt-get install -y -qq "${DOCKER_TO_INSTALL[@]}" > /dev/null
+    apt-get install -y -qq "${DOCKER_TO_INSTALL[@]}" >/dev/null
     printf '%s\n' "✓ Docker installed"
   fi
 else
@@ -149,11 +149,11 @@ if command -v docker >/dev/null 2>&1; then
     if ${DRY_RUN}; then
       printf '%s\n' "  Would install weekly Docker prune cron (Sunday 4am)"
     else
-      cat > /etc/cron.d/docker-prune <<'CRON'
+      cat >/etc/cron.d/docker-prune <<'CRON'
 # Weekly Docker cleanup — prune images unused for 7+ days, plus dangling containers/networks
 0 4 * * 0 root /usr/bin/docker image prune -af --filter "until=168h" >> /var/log/docker-prune.log 2>&1 && /usr/bin/docker container prune -f --filter "until=168h" >> /var/log/docker-prune.log 2>&1
 CRON
-      cat > /etc/logrotate.d/docker-prune <<'LOGROTATE'
+      cat >/etc/logrotate.d/docker-prune <<'LOGROTATE'
 /var/log/docker-prune.log {
     weekly
     rotate 4
@@ -188,7 +188,7 @@ else
     bash /tmp/nodesource-setup.sh
     rm -f /tmp/nodesource-setup.sh
     printf '%s\n' "→ Installing nodejs..."
-    apt-get install -y -qq nodejs > /dev/null
+    apt-get install -y -qq nodejs >/dev/null
     printf '%s\n' "✓ Node.js $(node --version) installed"
   fi
 fi
@@ -215,7 +215,7 @@ if [[ ${#NPM_TO_INSTALL[@]} -gt 0 ]]; then
   else
     printf '\n'
     printf '%s\n' "→ Installing ${#NPM_TO_INSTALL[@]} npm packages globally..."
-    npm install -g "${NPM_TO_INSTALL[@]}" > /dev/null
+    npm install -g "${NPM_TO_INSTALL[@]}" >/dev/null
     printf '%s\n' "✓ npm global packages installed"
   fi
 else

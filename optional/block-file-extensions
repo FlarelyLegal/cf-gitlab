@@ -72,7 +72,7 @@ while read -r old_sha new_sha ref; do
         break
       fi
     done
-  done <<< "${FILES}"
+  done <<<"${FILES}"
 
   if [[ ${#BLOCKED_FILES[@]} -gt 0 ]]; then
     printf '\n' >&2
