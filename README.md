@@ -223,50 +223,66 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` and fill in real values. All variables are required unless noted.
+Copy `.env.example` to `.env`. All variables are required unless marked optional.
 
-| Variable                        | Description                                                                                                                      |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Target**                      |                                                                                                                                  |
-| `LXC_HOST`                      | SSH target (e.g. `root@<LXC_IP>`)                                                                                                |
-| **GitLab Core**                 |                                                                                                                                  |
-| `GITLAB_DOMAIN`                 | Primary domain (e.g. `gitlab.example.com`)                                                                                       |
-| `GITLAB_ROOT_EMAIL`             | Root user email                                                                                                                  |
-| `GITLAB_ROOT_PASSWORD`          | Root user password (min 12 chars — auto-generated if too weak)                                                                   |
-| `ORG_NAME`                      | Organization name (used in MOTD)                                                                                                 |
-| `ORG_URL`                       | Organization URL (used in MOTD)                                                                                                  |
-| **TLS / Cloudflare**            |                                                                                                                                  |
-| `CF_API_TOKEN`                  | Cloudflare API token (Zone DNS Edit — used by Certbot on the LXC only)                                                           |
-| `CF_ZONE_ID`                    | _(optional)_ Cloudflare zone ID — only needed for `cloudflare/waf-rules.sh` / `cloudflare/cache-rules.sh`                        |
-| `CERT_EMAIL`                    | Email for Let's Encrypt certificate notifications                                                                                |
-| **CDN**                         |                                                                                                                                  |
-| `CDN_DOMAIN`                    | _(optional)_ CDN Worker hostname — needed for `cloudflare/waf-rules.sh`, `cloudflare/cache-rules.sh`, and `generate-wrangler.sh` |
-| `CDN_WORKER_NAME`               | _(optional)_ Worker name (default: `cdn-gitlab`) — used by `generate-wrangler.sh`                                                |
-| `VPC_SERVICE_ID`                | _(optional)_ VPC Service ID from Zero Trust dashboard — used by `generate-wrangler.sh`                                           |
-| **Subdomains**                  |                                                                                                                                  |
-| `REGISTRY_DOMAIN`               | Container Registry subdomain (e.g. `registry.gitlab.example.com`)                                                                |
-| `PAGES_DOMAIN`                  | GitLab Pages subdomain — wildcard cert auto-included (e.g. `pages.example.com`)                                                  |
-| **Networking**                  |                                                                                                                                  |
-| `INTERNAL_DNS`                  | LAN DNS resolver IP (for nginx OCSP stapling)                                                                                    |
-| `SSH_ALLOW_CIDR`                | CIDR for UFW SSH access (e.g. `10.0.0.0/8`)                                                                                      |
-| **System**                      |                                                                                                                                  |
-| `TIMEZONE`                      | IANA timezone (e.g. `America/New_York`) — used by `cloudflare/cloudflare-timing.sh`                                              |
-| **OmniAuth: Cloudflare Access** |                                                                                                                                  |
-| `OIDC_ISSUER`                   | OIDC issuer URL from Cloudflare Access application                                                                               |
-| `OIDC_CLIENT_ID`                | Application (client) ID                                                                                                          |
-| `OIDC_CLIENT_SECRET`            | Application secret                                                                                                               |
-| **OmniAuth: GitHub**            |                                                                                                                                  |
-| `GITHUB_APP_ID`                 | GitHub OAuth App client ID                                                                                                       |
-| `GITHUB_APP_SECRET`             | GitHub OAuth App client secret                                                                                                   |
-| **R2 Object Storage**           |                                                                                                                                  |
-| `R2_ENDPOINT`                   | S3-compatible endpoint URL                                                                                                       |
-| `R2_ACCESS_KEY`                 | R2 access key ID                                                                                                                 |
-| `R2_SECRET_KEY`                 | R2 secret access key                                                                                                             |
-| `R2_BUCKET_PREFIX`              | Bucket name prefix — creates `<prefix>-artifacts`, `<prefix>-lfs`, etc.                                                          |
-| `R2_BACKUP_BUCKET`              | Backup archive bucket name (default: `<R2_BUCKET_PREFIX>-backups`)                                                               |
-| **Runner**                      |                                                                                                                                  |
-| `RUNNER_NAME`                   | GitLab Runner description (e.g. `my-runner`)                                                                                     |
-| `RUNNER_TAGS`                   | Comma-separated tags (e.g. `self-hosted,linux,x64`)                                                                              |
+### GitLab
+
+| Variable               | Description                                           |
+| ---------------------- | ----------------------------------------------------- |
+| `LXC_HOST`             | SSH target (e.g. `root@10.0.0.50`)                    |
+| `GITLAB_DOMAIN`        | Primary domain (e.g. `gitlab.example.com`)            |
+| `GITLAB_ROOT_EMAIL`    | Admin user email                                      |
+| `GITLAB_ROOT_PASSWORD` | Admin password (min 12 chars, auto-generated if weak) |
+| `ORG_NAME`             | Organization name (MOTD)                              |
+| `ORG_URL`              | Organization URL (MOTD)                               |
+| `REGISTRY_DOMAIN`      | Container Registry subdomain                          |
+| `PAGES_DOMAIN`         | GitLab Pages subdomain (wildcard cert auto-included)  |
+
+### TLS and Networking
+
+| Variable         | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `CF_API_TOKEN`   | Cloudflare API token (Zone DNS Edit, Certbot only) |
+| `CERT_EMAIL`     | Let's Encrypt notification email                   |
+| `INTERNAL_DNS`   | LAN DNS resolver IP (nginx OCSP stapling)          |
+| `SSH_ALLOW_CIDR` | CIDR for UFW SSH access (e.g. `10.0.0.0/8`)        |
+| `TIMEZONE`       | IANA timezone (e.g. `America/New_York`)            |
+
+### OmniAuth
+
+| Variable             | Description                              |
+| -------------------- | ---------------------------------------- |
+| `OIDC_ISSUER`        | Cloudflare Access issuer URL             |
+| `OIDC_CLIENT_ID`     | Access SaaS application client ID        |
+| `OIDC_CLIENT_SECRET` | Access SaaS application secret           |
+| `GITHUB_APP_ID`      | GitHub OAuth App client ID (for imports) |
+| `GITHUB_APP_SECRET`  | GitHub OAuth App client secret           |
+
+### R2 Object Storage
+
+| Variable           | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `R2_ENDPOINT`      | S3-compatible endpoint URL                                      |
+| `R2_ACCESS_KEY`    | Access key ID                                                   |
+| `R2_SECRET_KEY`    | Secret access key                                               |
+| `R2_BUCKET_PREFIX` | Bucket name prefix (creates `<prefix>-artifacts`, `-lfs`, etc.) |
+| `R2_BACKUP_BUCKET` | Backup bucket name (default: `<R2_BUCKET_PREFIX>-backups`)      |
+
+### CDN (optional)
+
+| Variable          | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `CF_ZONE_ID`      | Cloudflare zone ID (for WAF/cache rule scripts) |
+| `CDN_DOMAIN`      | CDN Worker hostname                             |
+| `CDN_WORKER_NAME` | Worker name (default: `cdn-gitlab`)             |
+| `VPC_SERVICE_ID`  | VPC Service ID from Zero Trust dashboard        |
+
+### Runner
+
+| Variable      | Description                                         |
+| ------------- | --------------------------------------------------- |
+| `RUNNER_NAME` | Runner description (e.g. `my-runner`)               |
+| `RUNNER_TAGS` | Comma-separated tags (e.g. `self-hosted,linux,x64`) |
 
 ---
 
