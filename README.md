@@ -118,15 +118,37 @@ Also note your **Zone ID** from the zone's Overview page (right sidebar).
 
 ### 5. Cloudflare Access OIDC Application
 
-In [Cloudflare One → Access controls → Applications](https://one.dash.cloudflare.com/):
+You need **two** Access applications: one to protect the domain, and one to act as the OIDC
+identity provider for GitLab's OmniAuth.
 
-1. Create a **Self-hosted** application
+In [Cloudflare One](https://one.dash.cloudflare.com/) → **Access controls** → **Applications**:
+
+**5a. Self-hosted application** (protects the domain):
+
+1. Select **Add an application** → **Self-hosted**
 2. Set the **Application domain** to `gitlab.example.com`
-3. Under **Settings → Authentication**, note the:
-   - **Issuer URL** — `https://<team>.cloudflareaccess.com/cdn-cgi/access/sso/oidc/<app-id>`
-   - **Client ID**
-   - **Client Secret**
-4. Add a **Policy** to control who can sign in (e.g. email domain, group membership)
+3. Add a **Policy** to control who can reach the site (e.g. email domain, group membership)
+4. Select **Save application**
+
+**5b. SaaS application** (OIDC provider for GitLab OmniAuth):
+
+1. Select **Add an application** → **SaaS**
+2. In **Application**, enter a name (e.g. `GitLab OIDC`)
+3. For the authentication protocol, select **OIDC**, then select **Add application**
+4. In **Scopes**, ensure `openid`, `email`, and `profile` are selected
+5. In **Redirect URLs**, enter `https://gitlab.example.com/users/auth/openid_connect/callback`
+6. Copy the following values (you will need them for `.env`):
+   - **Client ID** → `OIDC_CLIENT_ID`
+   - **Client Secret** → `OIDC_CLIENT_SECRET`
+   - **Issuer** → `OIDC_ISSUER` (format: `https://<team>.cloudflareaccess.com/cdn-cgi/access/sso/oidc/<client-id>`)
+7. Add a **Policy** with the same rules as the self-hosted app
+8. Select **Save application**
+
+> The self-hosted app gates who can reach GitLab at all. The SaaS app provides the OIDC
+> endpoints that GitLab calls during the OmniAuth login flow. Both are required.
+>
+> See [Generic OIDC application](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/saas-apps/generic-oidc-saas/)
+> in the Cloudflare docs for detailed OIDC SaaS setup instructions.
 
 ### 6. GitHub OAuth Application (for imports)
 
