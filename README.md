@@ -221,27 +221,6 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ---
 
-## Repository Structure
-
-| Path             | Description                                                                             |
-| ---------------- | --------------------------------------------------------------------------------------- |
-| `setup.sh`       | Core: server-side LXC provisioning                                                      |
-| `deploy.sh`      | Core: local orchestrator (pushes secrets + scripts, runs setup.sh)                      |
-| `validate.sh`    | Core: read-only validation (34 checks)                                                  |
-| `ssonly.sh`      | Post-deploy: SSO-only lockdown                                                          |
-| `motd.sh`        | Post-deploy: sets `/etc/motd` from banner + variables                                   |
-| `ssh-config.sh`  | Local: configures `~/.ssh/config` + known_hosts                                         |
-| `.env.example`   | Template with all required variables                                                    |
-| `.gitlab-ci.yml` | CI pipeline: stages + includes (see [CI/CD Pipeline](#cicd-pipeline))                   |
-| `cloudflare/`    | WAF, cache, rate-limit, and NTS time sync scripts                                       |
-| `runners/`       | Co-located and external runner deploy scripts                                           |
-| `config/`        | Static data files (banner, chrony config)                                               |
-| `optional/`      | File hooks + server hooks (see [`optional/README.md`](optional/README.md))              |
-| `gitlab-cdn/`    | CDN Worker via VPC Service Binding (see [`gitlab-cdn/README.md`](gitlab-cdn/README.md)) |
-| `snippets/`      | Rails cheatsheet and default `.gitignore` template                                      |
-
----
-
 ## Environment Variables
 
 Copy `.env.example` to `.env` and fill in real values. All variables are required unless noted.
