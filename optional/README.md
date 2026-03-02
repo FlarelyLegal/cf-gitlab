@@ -6,25 +6,23 @@
 
 These hooks are **optional** and not required for core GitLab functionality.
 
-## Hooks
+## File Hooks
+
+[File hooks](https://docs.gitlab.com/administration/file_hooks/) run asynchronously via Sidekiq on system events. They cannot block actions.
 
 | File                      | Event                                                       | Action                                                     |
 | ------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------- |
 | `notify-admin.rb`         | project_create, group_create, user_create, user_add_to_team | Emails the admin via GitLab's configured SMTP              |
 | `discord-failed-login.rb` | user_failed_login                                           | Posts a Discord embed when a blocked user tries to sign in |
 
-## Installation
-
 ```bash
-# Copy to the file hooks directory
+# Install
 cp optional/<hook>.rb /opt/gitlab/embedded/service/gitlab-rails/file_hooks/
 chmod +x /opt/gitlab/embedded/service/gitlab-rails/file_hooks/<hook>.rb
 
 # Validate
 gitlab-rake file_hooks:validate
 ```
-
-## Configuration
 
 Both hooks read from `/root/.secrets/gitlab.env`:
 
@@ -34,3 +32,23 @@ Both hooks read from `/root/.secrets/gitlab.env`:
 | `discord-failed-login.rb` | `DISCORD_WEBHOOK_URL_FAILEDLOGIN` |
 
 `discord-failed-login.rb` exits silently if its env var is not set.
+
+## Server Hooks
+
+[Server hooks](https://docs.gitlab.com/administration/server_hooks.html) run synchronously during git operations and can **reject pushes**.
+
+| File                     | Type        | Action                                                                                     |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------ |
+| `enforce-branch-naming`  | pre-receive | Rejects branches not matching `feature/`, `fix/`, `hotfix/`, `release/`, `chore/`, `docs/` |
+| `block-file-extensions`  | pre-receive | Rejects pushes containing binaries, archives, secrets (.exe, .zip, .jar, .pem, etc.)       |
+| `enforce-commit-message` | pre-receive | Requires Conventional Commits (`feat:`, `fix:`, `docs:`, etc.). Merge commits exempt.      |
+
+Edit the arrays/patterns at the top of each script to customize. `enforce-branch-naming` exempts `main` and `master`.
+
+```bash
+# Install (global, all repos)
+mkdir -p /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d
+cp optional/enforce-branch-naming optional/block-file-extensions optional/enforce-commit-message \
+  /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/
+chmod +x /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/*
+```
