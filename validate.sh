@@ -104,7 +104,7 @@ fi
 # Optional vars — Cloudflare API scripts
 for var in CF_ZONE_ID CDN_DOMAIN; do
   if [[ -z "${!var:-}" ]]; then
-    warn "${var} not set (needed for waf-rules.sh / cache-rules.sh)"
+    warn "${var} not set (needed for cloudflare/waf-rules.sh / cloudflare/cache-rules.sh)"
   else
     pass "${var} set"
   fi
@@ -144,7 +144,7 @@ printf '\n'
 # ═══════════════════════════════════════════════════════════════════════════════
 printf '%s\n' "── 3. Local Files ──"
 
-LOCAL_FILES=(setup.sh motd.sh banner.txt cloudflare-timing.sh chrony.conf)
+LOCAL_FILES=(setup.sh motd.sh config/banner.txt cloudflare/cloudflare-timing.sh config/chrony.conf)
 for f in "${LOCAL_FILES[@]}"; do
   if [[ -f "${SCRIPT_DIR}/${f}" ]]; then
     pass "${f}"
@@ -266,12 +266,13 @@ printf '\n'
 # ═══════════════════════════════════════════════════════════════════════════════
 printf '%s\n' "── 6. R2 Buckets ──"
 
-# Resolve account ID: prefer shell env, fall back to parsing R2 endpoint
-R2_ACCT="${CF_ACCT_ID:-}"
+# Resolve account ID: prefer R2_ENDPOINT (always matches the correct account),
+# fall back to CLOUDFLARE_ACCOUNT_ID from shell env
+R2_ACCT=$(printf '%s\n' "${R2_ENDPOINT:-}" | sed -n 's|^https://\([^.]*\)\.r2\.cloudflarestorage\.com.*|\1|p')
 if [[ -z "${R2_ACCT}" ]]; then
-  R2_ACCT=$(printf '%s\n' "${R2_ENDPOINT:-}" | sed -n 's|^https://\([^.]*\)\.r2\.cloudflarestorage\.com.*|\1|p')
+  R2_ACCT="${CF_ACCT_ID:-}"
   if [[ -z "${R2_ACCT}" ]]; then
-    warn "Cannot determine account ID — set CLOUDFLARE_ACCOUNT_ID in your shell"
+    warn "Cannot determine account ID — set CLOUDFLARE_ACCOUNT_ID in your shell or R2_ENDPOINT in .env"
     warn "R2 bucket check skipped"
     R2_ACCT=""
   fi

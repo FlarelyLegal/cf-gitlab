@@ -22,8 +22,8 @@ set +a
 
 # ─── Resolve banner ──────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "${SCRIPT_DIR}/banner.txt" ]]; then
-  ASCII_BANNER="$(cat "${SCRIPT_DIR}/banner.txt")"
+if [[ -f "${SCRIPT_DIR}/config/banner.txt" ]]; then
+  ASCII_BANNER="$(cat "${SCRIPT_DIR}/config/banner.txt")"
 elif [[ -f /tmp/gitlab-banner.txt ]]; then
   ASCII_BANNER="$(cat /tmp/gitlab-banner.txt)"
 else

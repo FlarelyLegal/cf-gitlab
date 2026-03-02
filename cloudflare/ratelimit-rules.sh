@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── WAF Rule Provisioning for GitLab CDN ────────────────────────────────────
-# Creates custom firewall rules on Cloudflare to protect the CDN Worker.
+# ─── Rate Limit Rule Provisioning for GitLab Health Endpoints ─────────────────
+# Creates a rate limiting rule on Cloudflare to protect /-/health, /-/liveness,
+# and /-/readiness from abuse.
 #
 # Usage:
-#   ./waf-rules.sh              # provision rules
-#   ./waf-rules.sh --dry-run    # show what would be created
+#   ./ratelimit-rules.sh              # provision rules
+#   ./ratelimit-rules.sh --dry-run    # show what would be created
 #
-# Requires: CF_ZONE_ID + CDN_DOMAIN in .env
+# Requires: CF_ZONE_ID + GITLAB_DOMAIN in .env
 #           CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL in shell env (Global API key)
 #           (or CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL in environment)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 # ─── Error handling ───────────────────────────────────────────────────────────
-trap 'printf "\n"; printf "%s\n" "✗ WAF provisioning failed at line ${LINENO}."' ERR
+trap 'printf "\n"; printf "%s\n" "✗ Rate limit provisioning failed at line ${LINENO}."' ERR
 
 # ─── Check required commands ─────────────────────────────────────────────────
 if ! command -v python3 &>/dev/null; then
@@ -29,7 +30,8 @@ fi
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
 
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
@@ -48,7 +50,7 @@ fi
 AUTH_HEADERS=(-H "X-Auth-Email: ${CLOUDFLARE_EMAIL}" -H "X-Auth-Key: ${CLOUDFLARE_API_KEY}")
 
 # ─── Validate required variables ──────────────────────────────────────────────
-for var in CF_ZONE_ID CDN_DOMAIN; do
+for var in CF_ZONE_ID GITLAB_DOMAIN; do
   if [[ -z "${!var:-}" ]]; then
     printf '%s\n' "✗ Missing ${var} — set it in .env"
     exit 1
@@ -56,42 +58,37 @@ for var in CF_ZONE_ID CDN_DOMAIN; do
 done
 
 ZONE_ID="${CF_ZONE_ID}"
-CDN="${CDN_DOMAIN}"
-NON_CDN_COUNT=0
+HOST="${GITLAB_DOMAIN}"
+NON_HEALTH_COUNT=0
 
-printf '%s\n' "── WAF Rules for ${CDN} (zone: ${ZONE_ID}) ──"
+printf '%s\n' "── Rate Limit Rules for ${HOST} (zone: ${ZONE_ID}) ──"
 printf '\n'
 
-# ─── Build the ruleset payload ────────────────────────────────────────────────
-# Rules are evaluated in order. The skip rule must come before the block rule.
+# ─── Build the rule payload ──────────────────────────────────────────────────
+# 20 requests per 60 seconds per IP per colo — generous for monitoring,
+# blocks sustained abuse. Mitigation lasts 60 seconds.
 PAYLOAD=$(cat <<JSON
 {
   "rules": [
     {
-      "action": "skip",
-      "action_parameters": {
-        "ruleset": "current"
-      },
-      "expression": "(http.host eq \"${CDN}\" and http.request.method in {\"GET\" \"HEAD\" \"OPTIONS\"} and (http.request.uri.path contains \"/raw/\" or http.request.uri.path contains \"/-/archive/\"))",
-      "description": "Allow GitLab CDN Worker traffic",
-      "enabled": true,
-      "logging": {
-        "enabled": true
-      }
-    },
-    {
       "action": "block",
-      "expression": "(http.host eq \"${CDN}\")",
-      "description": "Block all other GitLab CDN traffic",
-      "enabled": true
+      "description": "Rate limit GitLab health endpoints",
+      "enabled": true,
+      "expression": "(http.host eq \"${HOST}\" and (starts_with(http.request.uri.path, \"/-/health\") or starts_with(http.request.uri.path, \"/-/liveness\") or starts_with(http.request.uri.path, \"/-/readiness\")))",
+      "ratelimit": {
+        "characteristics": ["ip.src", "cf.colo.id"],
+        "mitigation_timeout": 60,
+        "period": 60,
+        "requests_per_period": 20
+      }
     }
   ]
 }
 JSON
 )
 
-# ─── Find existing WAF ruleset and preserve non-CDN rules ────────────────────
-printf '%s\n' "→ Reading existing WAF rules..."
+# ─── Find existing rate limit ruleset and preserve non-health rules ──────────
+printf '%s\n' "→ Reading existing rate limit rules..."
 API_BASE="https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/rulesets"
 EXISTING_ID=$(curl -s \
   "${AUTH_HEADERS[@]}" \
@@ -101,42 +98,41 @@ EXISTING_ID=$(curl -s \
 import json, sys
 data = json.load(sys.stdin)
 for r in data.get('result', []):
-    if r.get('phase') == 'http_request_firewall_custom' and r.get('kind') == 'zone':
+    if r.get('phase') == 'http_ratelimit' and r.get('kind') == 'zone':
         print(r['id'])
         break
 " 2>/dev/null || true)
 
-NON_CDN_RULES="[]"
+NON_HEALTH_RULES="[]"
 if [[ -n "${EXISTING_ID}" ]]; then
   printf '%s\n' "  Found existing ruleset: ${EXISTING_ID}"
-  NON_CDN_RULES=$(curl -s \
+  NON_HEALTH_RULES=$(curl -s \
     "${AUTH_HEADERS[@]}" \
     -H "Content-Type: application/json" \
     "${API_BASE}/${EXISTING_ID}" \
-    | CDN="${CDN}" python3 -c "
-import json, sys, os
+    | python3 -c "
+import json, sys
 data = json.load(sys.stdin)
 rules = data.get('result', {}).get('rules', [])
-cdn = os.environ['CDN']
-non_cdn = [r for r in rules if cdn not in r.get('expression', '')]
-for r in non_cdn:
+non_health = [r for r in rules if 'health' not in r.get('description', '').lower()]
+for r in non_health:
     for key in ['id', 'ref', 'version', 'last_updated']:
         r.pop(key, None)
-print(json.dumps(non_cdn))
+print(json.dumps(non_health))
 " 2>/dev/null)
-  NON_CDN_COUNT=$(printf '%s\n' "${NON_CDN_RULES}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
-  printf '%s\n' "  Found ${NON_CDN_COUNT} non-CDN rules to preserve"
+  NON_HEALTH_COUNT=$(printf '%s\n' "${NON_HEALTH_RULES}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+  printf '%s\n' "  Found ${NON_HEALTH_COUNT} non-health rules to preserve"
 else
-  printf '%s\n' "  No existing WAF ruleset found"
+  printf '%s\n' "  No existing rate limit ruleset found"
 fi
 
-# ─── Merge CDN rules + non-CDN rules ─────────────────────────────────────────
-CDN_RULES=$(printf '%s\n' "${PAYLOAD}" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['rules']))")
-MERGED_RULES=$(CDN_JSON="${CDN_RULES}" NON_CDN_JSON="${NON_CDN_RULES}" python3 -c "
+# ─── Merge health rules + non-health rules ───────────────────────────────────
+HEALTH_RULES=$(printf '%s\n' "${PAYLOAD}" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['rules']))")
+MERGED_RULES=$(A_JSON="${NON_HEALTH_RULES}" B_JSON="${HEALTH_RULES}" python3 -c "
 import json, os
-cdn = json.loads(os.environ['CDN_JSON'])
-non_cdn = json.loads(os.environ['NON_CDN_JSON'])
-print(json.dumps(cdn + non_cdn))
+a = json.loads(os.environ['A_JSON'])
+b = json.loads(os.environ['B_JSON'])
+print(json.dumps(a + b))
 ")
 
 TOTAL_COUNT=$(printf '%s\n' "${MERGED_RULES}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
@@ -155,20 +151,20 @@ fi
 WRITE_PAYLOAD="{\"rules\": ${MERGED_RULES}}"
 
 if [[ -n "${EXISTING_ID}" ]]; then
-  printf '%s\n' "→ Updating WAF ruleset ${EXISTING_ID}..."
+  printf '%s\n' "→ Updating rate limit ruleset ${EXISTING_ID}..."
   RESPONSE=$(curl -s -X PUT \
     "${AUTH_HEADERS[@]}" \
     -H "Content-Type: application/json" \
     -d "${WRITE_PAYLOAD}" \
     "${API_BASE}/${EXISTING_ID}")
 else
-  printf '%s\n' "→ Creating new custom firewall ruleset..."
+  printf '%s\n' "→ Creating new rate limit ruleset..."
   WRITE_PAYLOAD=$(printf '%s\n' "${WRITE_PAYLOAD}" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 data['name'] = 'default'
 data['kind'] = 'zone'
-data['phase'] = 'http_request_firewall_custom'
+data['phase'] = 'http_ratelimit'
 print(json.dumps(data))
 ")
   RESPONSE=$(curl -s -X POST \
@@ -186,14 +182,14 @@ if [[ "${HTTP_SUCCESS}" == "True" || "${HTTP_SUCCESS}" == "true" ]]; then
   VERSION=$(printf '%s\n' "${RESPONSE}" | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['version'])" 2>/dev/null)
   RULE_COUNT=$(printf '%s\n' "${RESPONSE}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)['result']['rules']))" 2>/dev/null)
   printf '\n'
-  printf '%s\n' "✓ WAF rules provisioned"
+  printf '%s\n' "✓ Rate limit rules provisioned"
   printf '%s\n' "  Ruleset:  ${RULESET_ID}"
   printf '%s\n' "  Version:  ${VERSION}"
-  printf '%s\n' "  Rules:    ${RULE_COUNT} total (2 CDN + ${NON_CDN_COUNT} preserved)"
+  printf '%s\n' "  Rules:    ${RULE_COUNT} total (1 health + ${NON_HEALTH_COUNT} preserved)"
   printf '\n'
-  printf '%s\n' "  CDN rules:"
-  printf '%s\n' "  1. skip  — Allow CDN Worker traffic (GET/HEAD/OPTIONS + /raw/ or /-/archive/)"
-  printf '%s\n' "  2. block — Block all other CDN traffic"
+  printf '%s\n' "  Health rate limit:"
+  printf '%s\n' "  - 20 req/60s per IP — /-/health, /-/liveness, /-/readiness"
+  printf '%s\n' "  - Block for 60s when exceeded"
 else
   printf '\n'
   printf '%s\n' "✗ API call failed:"

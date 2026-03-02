@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── CDN Cache Rule Provisioning ─────────────────────────────────────────────
-# Creates/updates cache rules for the GitLab CDN Worker on Cloudflare.
-# Uses read-merge-write to preserve non-CDN cache rules in the same phase.
+# ─── WAF Rule Provisioning for GitLab CDN ────────────────────────────────────
+# Creates custom firewall rules on Cloudflare to protect the CDN Worker.
 #
 # Usage:
-#   ./cache-rules.sh              # provision rules
-#   ./cache-rules.sh --dry-run    # show what would be created
+#   ./waf-rules.sh              # provision rules
+#   ./waf-rules.sh --dry-run    # show what would be created
 #
 # Requires: CF_ZONE_ID + CDN_DOMAIN in .env
 #           CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL in shell env (Global API key)
+#           (or CLOUDFLARE_API_KEY + CLOUDFLARE_EMAIL in environment)
 # ──────────────────────────────────────────────────────────────────────────────
 
 DRY_RUN=false
@@ -19,7 +19,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 # ─── Error handling ───────────────────────────────────────────────────────────
-trap 'printf "\n"; printf "%s\n" "✗ Cache rule provisioning failed at line ${LINENO}."' ERR
+trap 'printf "\n"; printf "%s\n" "✗ WAF provisioning failed at line ${LINENO}."' ERR
 
 # ─── Check required commands ─────────────────────────────────────────────────
 if ! command -v python3 &>/dev/null; then
@@ -29,7 +29,8 @@ fi
 
 # ─── Load .env ────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
 
 if [[ -f "${ENV_FILE}" ]]; then
   set -a
@@ -58,13 +59,41 @@ done
 ZONE_ID="${CF_ZONE_ID}"
 CDN="${CDN_DOMAIN}"
 NON_CDN_COUNT=0
-API_BASE="https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/rulesets"
 
-printf '%s\n' "── CDN Cache Rules for ${CDN} (zone: ${ZONE_ID}) ──"
+printf '%s\n' "── WAF Rules for ${CDN} (zone: ${ZONE_ID}) ──"
 printf '\n'
 
-# ─── Find existing cache settings ruleset ─────────────────────────────────────
-printf '%s\n' "→ Reading existing cache rules..."
+# ─── Build the ruleset payload ────────────────────────────────────────────────
+# Rules are evaluated in order. The skip rule must come before the block rule.
+PAYLOAD=$(cat <<JSON
+{
+  "rules": [
+    {
+      "action": "skip",
+      "action_parameters": {
+        "ruleset": "current"
+      },
+      "expression": "(http.host eq \"${CDN}\" and http.request.method in {\"GET\" \"HEAD\" \"OPTIONS\"} and (http.request.uri.path contains \"/raw/\" or http.request.uri.path contains \"/-/archive/\"))",
+      "description": "Allow GitLab CDN Worker traffic",
+      "enabled": true,
+      "logging": {
+        "enabled": true
+      }
+    },
+    {
+      "action": "block",
+      "expression": "(http.host eq \"${CDN}\")",
+      "description": "Block all other GitLab CDN traffic",
+      "enabled": true
+    }
+  ]
+}
+JSON
+)
+
+# ─── Find existing WAF ruleset and preserve non-CDN rules ────────────────────
+printf '%s\n' "→ Reading existing WAF rules..."
+API_BASE="https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/rulesets"
 EXISTING_ID=$(curl -s \
   "${AUTH_HEADERS[@]}" \
   -H "Content-Type: application/json" \
@@ -73,12 +102,11 @@ EXISTING_ID=$(curl -s \
 import json, sys
 data = json.load(sys.stdin)
 for r in data.get('result', []):
-    if r.get('phase') == 'http_request_cache_settings' and r.get('kind') == 'zone':
+    if r.get('phase') == 'http_request_firewall_custom' and r.get('kind') == 'zone':
         print(r['id'])
         break
 " 2>/dev/null || true)
 
-# ─── Read existing rules and filter out CDN ones ─────────────────────────────
 NON_CDN_RULES="[]"
 if [[ -n "${EXISTING_ID}" ]]; then
   printf '%s\n' "  Found existing ruleset: ${EXISTING_ID}"
@@ -90,10 +118,8 @@ if [[ -n "${EXISTING_ID}" ]]; then
 import json, sys, os
 data = json.load(sys.stdin)
 rules = data.get('result', {}).get('rules', [])
-# Keep rules that do NOT reference the CDN domain
 cdn = os.environ['CDN']
 non_cdn = [r for r in rules if cdn not in r.get('expression', '')]
-# Strip read-only fields that can't be sent back
 for r in non_cdn:
     for key in ['id', 'ref', 'version', 'last_updated']:
         r.pop(key, None)
@@ -102,56 +128,11 @@ print(json.dumps(non_cdn))
   NON_CDN_COUNT=$(printf '%s\n' "${NON_CDN_RULES}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
   printf '%s\n' "  Found ${NON_CDN_COUNT} non-CDN rules to preserve"
 else
-  printf '%s\n' "  No existing cache ruleset found"
+  printf '%s\n' "  No existing WAF ruleset found"
 fi
 
-# ─── Build the CDN cache rules ───────────────────────────────────────────────
-CDN_RULES=$(cat <<JSON
-[
-  {
-    "action": "set_cache_settings",
-    "action_parameters": {
-      "browser_ttl": {
-        "default": 3600,
-        "mode": "override_origin"
-      },
-      "cache": true,
-      "cache_key": {
-        "custom_key": {
-          "host": {
-            "resolved": false
-          },
-          "query_string": {
-            "include": ["inline", "append_sha", "path"]
-          }
-        }
-      },
-      "edge_ttl": {
-        "default": 86400,
-        "mode": "override_origin"
-      }
-    },
-    "description": "GitLab CDN — cache public static objects",
-    "enabled": true,
-    "expression": "(http.host eq \"${CDN}\" and http.request.method in {\"GET\" \"HEAD\"} and (http.request.uri.path contains \"/raw/\" or http.request.uri.path contains \"/-/archive/\") and not http.request.uri.query contains \"token=\")"
-  },
-  {
-    "action": "set_cache_settings",
-    "action_parameters": {
-      "browser_ttl": {
-        "mode": "bypass"
-      },
-      "cache": false
-    },
-    "description": "GitLab CDN — bypass cache for authenticated requests",
-    "enabled": true,
-    "expression": "(http.host eq \"${CDN}\" and http.request.uri.query contains \"token=\")"
-  }
-]
-JSON
-)
-
 # ─── Merge CDN rules + non-CDN rules ─────────────────────────────────────────
+CDN_RULES=$(printf '%s\n' "${PAYLOAD}" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['rules']))")
 MERGED_RULES=$(CDN_JSON="${CDN_RULES}" NON_CDN_JSON="${NON_CDN_RULES}" python3 -c "
 import json, os
 cdn = json.loads(os.environ['CDN_JSON'])
@@ -172,29 +153,29 @@ if ${DRY_RUN}; then
 fi
 
 # ─── Write rules ──────────────────────────────────────────────────────────────
-PAYLOAD="{\"rules\": ${MERGED_RULES}}"
+WRITE_PAYLOAD="{\"rules\": ${MERGED_RULES}}"
 
 if [[ -n "${EXISTING_ID}" ]]; then
-  printf '%s\n' "→ Updating cache ruleset ${EXISTING_ID}..."
+  printf '%s\n' "→ Updating WAF ruleset ${EXISTING_ID}..."
   RESPONSE=$(curl -s -X PUT \
     "${AUTH_HEADERS[@]}" \
     -H "Content-Type: application/json" \
-    -d "${PAYLOAD}" \
+    -d "${WRITE_PAYLOAD}" \
     "${API_BASE}/${EXISTING_ID}")
 else
-  printf '%s\n' "→ Creating new cache ruleset..."
-  PAYLOAD=$(printf '%s\n' "${PAYLOAD}" | python3 -c "
+  printf '%s\n' "→ Creating new custom firewall ruleset..."
+  WRITE_PAYLOAD=$(printf '%s\n' "${WRITE_PAYLOAD}" | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 data['name'] = 'default'
 data['kind'] = 'zone'
-data['phase'] = 'http_request_cache_settings'
+data['phase'] = 'http_request_firewall_custom'
 print(json.dumps(data))
 ")
   RESPONSE=$(curl -s -X POST \
     "${AUTH_HEADERS[@]}" \
     -H "Content-Type: application/json" \
-    -d "${PAYLOAD}" \
+    -d "${WRITE_PAYLOAD}" \
     "${API_BASE}")
 fi
 
@@ -206,14 +187,14 @@ if [[ "${HTTP_SUCCESS}" == "True" || "${HTTP_SUCCESS}" == "true" ]]; then
   VERSION=$(printf '%s\n' "${RESPONSE}" | python3 -c "import json,sys; print(json.load(sys.stdin)['result']['version'])" 2>/dev/null)
   RULE_COUNT=$(printf '%s\n' "${RESPONSE}" | python3 -c "import json,sys; print(len(json.load(sys.stdin)['result']['rules']))" 2>/dev/null)
   printf '\n'
-  printf '%s\n' "✓ Cache rules provisioned"
+  printf '%s\n' "✓ WAF rules provisioned"
   printf '%s\n' "  Ruleset:  ${RULESET_ID}"
   printf '%s\n' "  Version:  ${VERSION}"
   printf '%s\n' "  Rules:    ${RULE_COUNT} total (2 CDN + ${NON_CDN_COUNT} preserved)"
   printf '\n'
   printf '%s\n' "  CDN rules:"
-  printf '%s\n' "  1. cache  — Public static objects (browser: 1h, edge: 24h)"
-  printf '%s\n' "  2. bypass — Authenticated requests (?token=)"
+  printf '%s\n' "  1. skip  — Allow CDN Worker traffic (GET/HEAD/OPTIONS + /raw/ or /-/archive/)"
+  printf '%s\n' "  2. block — Block all other CDN traffic"
 else
   printf '\n'
   printf '%s\n' "✗ API call failed:"

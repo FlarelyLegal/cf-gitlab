@@ -28,7 +28,8 @@ SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=
 
 # ─── Resolve paths ────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   printf '%s\n' "✗ Missing ${ENV_FILE}"
@@ -43,7 +44,7 @@ set +a
 
 # ─── Runner-specific config ──────────────────────────────────────────────────
 # These can be overridden via environment variables before calling this script:
-#   RUNNER_LXC_HOST=root@10.1.1.70 RUNNER_NAME=runner-1 ./deploy-runner.sh
+#   RUNNER_LXC_HOST=root@<runner-ip> RUNNER_NAME=runner-1 ./deploy-runner.sh
 RUNNER_LXC_HOST="${RUNNER_LXC_HOST:-}"
 RUNNER_RUNNER_NAME="${RUNNER_RUNNER_NAME:-runner-1}"
 RUNNER_RUNNER_TAGS="${RUNNER_RUNNER_TAGS:-linux,x64}"
@@ -52,13 +53,13 @@ RUNNER_GITLAB_PAT="${RUNNER_GITLAB_PAT:-}"
 
 if [[ -z "${RUNNER_LXC_HOST}" ]]; then
   printf '%s\n' "✗ RUNNER_LXC_HOST not set. Usage:"
-  printf '%s\n' "  RUNNER_LXC_HOST=root@10.1.1.70 ./deploy-runner.sh"
+  printf '%s\n' "  RUNNER_LXC_HOST=root@<runner-ip> ./deploy-runner.sh"
   exit 1
 fi
 
 if [[ -z "${RUNNER_GITLAB_PAT}" ]]; then
   printf '%s\n' "✗ RUNNER_GITLAB_PAT not set. Provide a Personal Access Token with create_runner scope."
-  printf '%s\n' "  RUNNER_GITLAB_PAT=glpat-... RUNNER_LXC_HOST=root@10.1.1.70 ./deploy-runner.sh"
+  printf '%s\n' "  RUNNER_GITLAB_PAT=glpat-... RUNNER_LXC_HOST=root@<runner-ip> ./deploy-runner.sh"
   exit 1
 fi
 
@@ -71,9 +72,9 @@ for var in GITLAB_DOMAIN ORG_NAME ORG_URL; do
 done
 
 # ─── Verify local files exist ────────────────────────────────────────────────
-for f in external-runner.sh runner-apps.sh runner-apps.json banner.txt; do
-  if [[ ! -f "${SCRIPT_DIR}/${f}" ]]; then
-    printf '%s\n' "✗ Missing ${SCRIPT_DIR}/${f}"
+for f in "${SCRIPT_DIR}/external-runner.sh" "${SCRIPT_DIR}/runner-apps.sh" "${SCRIPT_DIR}/runner-apps.json" "${REPO_ROOT}/config/banner.txt"; do
+  if [[ ! -f "${f}" ]]; then
+    printf '%s\n' "✗ Missing ${f}"
     exit 1
   fi
 done
@@ -139,10 +140,10 @@ printf '%s\n' "✓ Secrets deployed"
 
 # ─── Push scripts ─────────────────────────────────────────────────────────────
 printf '%s\n' "→ Copying scripts to runner LXC..."
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/external-runner.sh" "${RUNNER_LXC_HOST}:/tmp/external-runner.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.sh"     "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.json"   "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/banner.txt"         "${RUNNER_LXC_HOST}:/tmp/runner-banner.txt"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/external-runner.sh"  "${RUNNER_LXC_HOST}:/tmp/external-runner.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.sh"      "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.json"    "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
+scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/banner.txt"    "${RUNNER_LXC_HOST}:/tmp/runner-banner.txt"
 ssh "${SSH_OPTS[@]}" "${RUNNER_LXC_HOST}" 'chmod +x /tmp/external-runner.sh /tmp/runner-apps.sh'
 printf '%s\n' "✓ Scripts copied"
 

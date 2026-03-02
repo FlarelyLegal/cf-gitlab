@@ -1,6 +1,6 @@
-# GitLab CDN Worker
+[← Back to root](../README.md)
 
-Part of [cf-gitlab](https://github.com/FlarelyLegal/cf-gitlab) — see the parent repo for full deployment instructions.
+# GitLab CDN Worker
 
 Cloudflare Worker that acts as a caching CDN proxy for GitLab static objects (raw file downloads and repository archives), connected to the private GitLab instance via Workers VPC tunnel binding.
 

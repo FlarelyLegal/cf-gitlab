@@ -22,7 +22,8 @@ TZ_VALUE="${TIMEZONE:-UTC}"
 
 # ─── Resolve config file ─────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CHRONY_CONF="${SCRIPT_DIR}/chrony.conf"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+CHRONY_CONF="${REPO_ROOT}/config/chrony.conf"
 if [[ ! -f "${CHRONY_CONF}" ]]; then
   CHRONY_CONF="/tmp/gitlab-chrony.conf"
 fi

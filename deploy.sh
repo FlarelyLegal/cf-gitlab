@@ -41,10 +41,10 @@ for var in LXC_HOST GITLAB_DOMAIN GITLAB_ROOT_EMAIL GITLAB_ROOT_PASSWORD ORG_NAM
   fi
 done
 
-# Warn about optional CDN variables (needed by waf-rules.sh / cache-rules.sh, not by deploy)
+# Warn about optional CDN variables (needed by cloudflare/ scripts, not by deploy)
 for var in CF_ZONE_ID CDN_DOMAIN; do
   if [[ -z "${!var:-}" ]]; then
-    printf '%s\n' "⚠ ${var} not set — waf-rules.sh and cache-rules.sh will not work without it"
+    printf '%s\n' "⚠ ${var} not set — cloudflare/waf-rules.sh and cloudflare/cache-rules.sh will not work without it"
   fi
 done
 
@@ -60,13 +60,13 @@ fi
 printf '%s\n' "✓ SSH connected"
 
 # ─── 2. Verify local files exist ─────────────────────────────────────────────
-for f in setup.sh motd.sh banner.txt cloudflare-timing.sh chrony.conf; do
+for f in setup.sh motd.sh config/banner.txt cloudflare/cloudflare-timing.sh config/chrony.conf; do
   if [[ ! -f "${SCRIPT_DIR}/${f}" ]]; then
     printf '%s\n' "✗ Missing ${SCRIPT_DIR}/${f}"
     exit 1
   fi
 done
-printf '%s\n' "✓ All local files present (setup.sh, motd.sh, banner.txt, cloudflare-timing.sh, chrony.conf)"
+printf '%s\n' "✓ All local files present"
 
 if ${DRY_RUN}; then
   printf '\n'
@@ -149,13 +149,13 @@ printf '%s\n' "✓ Secrets deployed"
 
 # ─── 4. Push scripts to LXC ──────────────────────────────────────────────────
 printf '%s\n' "→ Copying scripts to LXC..."
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/setup.sh"  "${LXC_HOST}:/tmp/gitlab-setup.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/motd.sh"   "${LXC_HOST}:/tmp/gitlab-motd.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/banner.txt" "${LXC_HOST}:/tmp/gitlab-banner.txt"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/cloudflare-timing.sh" "${LXC_HOST}:/tmp/gitlab-timing.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/chrony.conf" "${LXC_HOST}:/tmp/gitlab-chrony.conf"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/setup.sh"                        "${LXC_HOST}:/tmp/gitlab-setup.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/motd.sh"                         "${LXC_HOST}:/tmp/gitlab-motd.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/banner.txt"               "${LXC_HOST}:/tmp/gitlab-banner.txt"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/cloudflare/cloudflare-timing.sh" "${LXC_HOST}:/tmp/gitlab-timing.sh"
+scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/chrony.conf"              "${LXC_HOST}:/tmp/gitlab-chrony.conf"
 ssh "${SSH_OPTS[@]}" "${LXC_HOST}" 'chmod +x /tmp/gitlab-setup.sh /tmp/gitlab-motd.sh /tmp/gitlab-timing.sh'
-printf '%s\n' "✓ Scripts copied (setup.sh, motd.sh, banner.txt, cloudflare-timing.sh, chrony.conf)"
+printf '%s\n' "✓ Scripts copied"
 
 # ─── 5. Run setup script ─────────────────────────────────────────────────────
 printf '\n'

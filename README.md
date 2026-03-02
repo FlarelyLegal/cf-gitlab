@@ -106,11 +106,11 @@ You can use a single token with all permissions, or separate tokens for least-pr
 
 - **Zone → DNS → Edit** — required. Used by Certbot on the LXC for DNS-01 challenges.
   This is the only permission sent to the LXC (via `cloudflare.ini`).
-- **Zone → WAF → Edit** — optional. Used locally by `waf-rules.sh`.
-- **Zone → Cache Rules → Edit** — optional. Used locally by `cache-rules.sh`.
+- **Zone → WAF → Edit** — optional. Used locally by `cloudflare/waf-rules.sh`.
+- **Zone → Cache Rules → Edit** — optional. Used locally by `cloudflare/cache-rules.sh`.
 
-> All scripts that call the Cloudflare API (`validate.sh`, `waf-rules.sh`, `cache-rules.sh`,
-> `ratelimit-rules.sh`) run **locally** and require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` +
+> All scripts that call the Cloudflare API (`validate.sh`, `cloudflare/waf-rules.sh`, `cloudflare/cache-rules.sh`,
+> `cloudflare/ratelimit-rules.sh`) run **locally** and require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` +
 > `CLOUDFLARE_ACCOUNT_ID` in your shell environment (Global API key). These are NOT in `.env`.
 > The LXC only receives a Certbot-scoped `CF_API_TOKEN` — it never has WAF, cache, or R2 permissions.
 
@@ -199,30 +199,47 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ---
 
-## Files
+## Repository Structure
 
-| File                   | Description                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `validate.sh`          | Local — read-only validation of .env, SSH, Cloudflare API/DNS/R2, OIDC, HTTPS tunnel health                   |
-| `deploy.sh`            | Local orchestrator — validates `.env`, pushes secrets + scripts to LXC, executes `setup.sh`                   |
-| `setup.sh`             | Server-side — installs GitLab CE, configures TLS, UFW, nginx, OmniAuth, registry, pages, R2, daily backups    |
-| `motd.sh`              | Sets `/etc/motd` using `banner.txt` + variables (called by `setup.sh`, or standalone)                         |
-| `gitlabrunner.sh`      | Server-side — installs GitLab Runner, creates token via Rails, registers, starts                              |
-| `runner-apps.sh`       | Server-side — installs runner CI tools from `runner-apps.json` (Docker, Node, npm, etc.)                      |
-| `runner-apps.json`     | Manifest of tools and packages to install on the runner (apt, Docker, Node, npm global)                       |
-| `gitlab-cdn/`          | CDN Worker — caching proxy for raw files and archives via VPC tunnel (see [its README](gitlab-cdn/README.md)) |
-| `generate-wrangler.sh` | Inside `gitlab-cdn/` — generates `wrangler.jsonc` from `.env` values (`--dry-run` supported)                  |
-| `waf-rules.sh`         | Provisions CDN WAF rules on Cloudflare via API                                                                |
-| `cache-rules.sh`       | Provisions CDN cache rules on Cloudflare via API (read-merge-write, preserves non-CDN rules)                  |
-| `ratelimit-rules.sh`   | Optional — rate limits `/-/health`, `/-/liveness`, `/-/readiness` via Cloudflare API                          |
-| `ssh-config.sh`        | Local — configures `~/.ssh/config` + `known_hosts` for Git and admin SSH via Cloudflare Tunnel                |
-| `ssonly.sh`            | Server-side — disables signup + password login, SSO-only (run after verifying SSO works)                      |
-| `cloudflare-timing.sh` | Server-side — installs chrony and configures Cloudflare NTS as the time source                                |
-| `chrony.conf`          | Chrony config using `time.cloudflare.com` with NTS authentication                                             |
-| `banner.txt`           | ASCII art banner for the MOTD                                                                                 |
-| `snippets/`            | Reference files — Rails console cheatsheet, standard `.gitignore` template                                    |
-| `.env`                 | All config (secrets + non-sensitive) — **gitignored, never committed**                                        |
-| `.env.example`         | Template with all required variables and descriptions                                                         |
+```
+.
+├── setup.sh                  Core: server-side LXC provisioning
+├── deploy.sh                 Core: local orchestrator (pushes secrets + scripts, runs setup.sh)
+├── validate.sh               Core: read-only validation (34 checks)
+├── ssonly.sh                 Post-deploy: SSO-only lockdown
+├── motd.sh                   Post-deploy: sets /etc/motd from banner + variables
+├── ssh-config.sh             Local: configures ~/.ssh/config + known_hosts
+├── .env.example              Template with all required variables
+│
+├── cloudflare/               Cloudflare API scripts
+│   ├── waf-rules.sh            WAF custom rules (CDN skip, block, mTLS preserve)
+│   ├── cache-rules.sh          Cache rules (edge + browser TTLs, token bypass)
+│   ├── ratelimit-rules.sh      Rate limit rules (health endpoints)
+│   └── cloudflare-timing.sh    Chrony NTS time sync setup
+│
+├── runners/                  GitLab Runner scripts
+│   ├── gitlabrunner.sh         Co-located runner (installs on the GitLab LXC)
+│   ├── deploy-runner.sh        External runner orchestrator (local, pushes to remote LXC)
+│   ├── external-runner.sh      External runner setup (server-side, UFW + install + register)
+│   ├── runner-apps.sh          CI tool installer (reads runner-apps.json)
+│   └── runner-apps.json        Tool manifest (apt, Docker, Node, npm globals)
+│
+├── config/                   Static data files
+│   ├── banner.txt              ASCII art banner for MOTD
+│   └── chrony.conf             Chrony config (time.cloudflare.com, NTS)
+│
+├── optional/                 Optional file hooks (see optional/README.md)
+│   ├── notify-admin.rb         Email admin on project/group/user events
+│   └── discord-failed-login.rb Discord alert on failed login attempts
+│
+├── gitlab-cdn/               CDN Worker (see gitlab-cdn/README.md)
+│   ├── src/index.ts            Worker source (VPC Service Binding proxy)
+│   └── generate-wrangler.sh    Generates wrangler.jsonc from .env
+│
+└── snippets/                 Reference files
+    ├── rails-cheatsheet.sh     GitLab Rails console commands
+    └── standard.gitignore      Default .gitignore template
+```
 
 ---
 
@@ -230,48 +247,48 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 Copy `.env.example` to `.env` and fill in real values. All variables are required unless noted.
 
-| Variable                        | Description                                                                                                |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Target**                      |                                                                                                            |
-| `LXC_HOST`                      | SSH target (e.g. `root@<LXC_IP>`)                                                                          |
-| **GitLab Core**                 |                                                                                                            |
-| `GITLAB_DOMAIN`                 | Primary domain (e.g. `gitlab.example.com`)                                                                 |
-| `GITLAB_ROOT_EMAIL`             | Root user email                                                                                            |
-| `GITLAB_ROOT_PASSWORD`          | Root user password (min 12 chars — auto-generated if too weak)                                             |
-| `ORG_NAME`                      | Organization name (used in MOTD)                                                                           |
-| `ORG_URL`                       | Organization URL (used in MOTD)                                                                            |
-| **TLS / Cloudflare**            |                                                                                                            |
-| `CF_API_TOKEN`                  | Cloudflare API token (Zone DNS Edit — used by Certbot on the LXC only)                                     |
-| `CF_ZONE_ID`                    | _(optional)_ Cloudflare zone ID — only needed for `waf-rules.sh` / `cache-rules.sh`                        |
-| `CERT_EMAIL`                    | Email for Let's Encrypt certificate notifications                                                          |
-| **CDN**                         |                                                                                                            |
-| `CDN_DOMAIN`                    | _(optional)_ CDN Worker hostname — needed for `waf-rules.sh`, `cache-rules.sh`, and `generate-wrangler.sh` |
-| `CDN_WORKER_NAME`               | _(optional)_ Worker name (default: `cdn-gitlab`) — used by `generate-wrangler.sh`                          |
-| `VPC_SERVICE_ID`                | _(optional)_ VPC Service ID from Zero Trust dashboard — used by `generate-wrangler.sh`                     |
-| **Subdomains**                  |                                                                                                            |
-| `REGISTRY_DOMAIN`               | Container Registry subdomain (e.g. `registry.gitlab.example.com`)                                          |
-| `PAGES_DOMAIN`                  | GitLab Pages subdomain — wildcard cert auto-included (e.g. `pages.example.com`)                            |
-| **Networking**                  |                                                                                                            |
-| `INTERNAL_DNS`                  | LAN DNS resolver IP (for nginx OCSP stapling)                                                              |
-| `SSH_ALLOW_CIDR`                | CIDR for UFW SSH access (e.g. `10.0.0.0/8`)                                                                |
-| **System**                      |                                                                                                            |
-| `TIMEZONE`                      | IANA timezone (e.g. `America/New_York`) — used by `cloudflare-timing.sh`                                   |
-| **OmniAuth: Cloudflare Access** |                                                                                                            |
-| `OIDC_ISSUER`                   | OIDC issuer URL from Cloudflare Access application                                                         |
-| `OIDC_CLIENT_ID`                | Application (client) ID                                                                                    |
-| `OIDC_CLIENT_SECRET`            | Application secret                                                                                         |
-| **OmniAuth: GitHub**            |                                                                                                            |
-| `GITHUB_APP_ID`                 | GitHub OAuth App client ID                                                                                 |
-| `GITHUB_APP_SECRET`             | GitHub OAuth App client secret                                                                             |
-| **R2 Object Storage**           |                                                                                                            |
-| `R2_ENDPOINT`                   | S3-compatible endpoint URL                                                                                 |
-| `R2_ACCESS_KEY`                 | R2 access key ID                                                                                           |
-| `R2_SECRET_KEY`                 | R2 secret access key                                                                                       |
-| `R2_BUCKET_PREFIX`              | Bucket name prefix — creates `<prefix>-artifacts`, `<prefix>-lfs`, etc.                                    |
-| `R2_BACKUP_BUCKET`              | Backup archive bucket name (default: `<R2_BUCKET_PREFIX>-backups`)                                         |
-| **Runner**                      |                                                                                                            |
-| `RUNNER_NAME`                   | GitLab Runner description (e.g. `my-runner`)                                                               |
-| `RUNNER_TAGS`                   | Comma-separated tags (e.g. `self-hosted,linux,x64`)                                                        |
+| Variable                        | Description                                                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Target**                      |                                                                                                                                  |
+| `LXC_HOST`                      | SSH target (e.g. `root@<LXC_IP>`)                                                                                                |
+| **GitLab Core**                 |                                                                                                                                  |
+| `GITLAB_DOMAIN`                 | Primary domain (e.g. `gitlab.example.com`)                                                                                       |
+| `GITLAB_ROOT_EMAIL`             | Root user email                                                                                                                  |
+| `GITLAB_ROOT_PASSWORD`          | Root user password (min 12 chars — auto-generated if too weak)                                                                   |
+| `ORG_NAME`                      | Organization name (used in MOTD)                                                                                                 |
+| `ORG_URL`                       | Organization URL (used in MOTD)                                                                                                  |
+| **TLS / Cloudflare**            |                                                                                                                                  |
+| `CF_API_TOKEN`                  | Cloudflare API token (Zone DNS Edit — used by Certbot on the LXC only)                                                           |
+| `CF_ZONE_ID`                    | _(optional)_ Cloudflare zone ID — only needed for `cloudflare/waf-rules.sh` / `cloudflare/cache-rules.sh`                        |
+| `CERT_EMAIL`                    | Email for Let's Encrypt certificate notifications                                                                                |
+| **CDN**                         |                                                                                                                                  |
+| `CDN_DOMAIN`                    | _(optional)_ CDN Worker hostname — needed for `cloudflare/waf-rules.sh`, `cloudflare/cache-rules.sh`, and `generate-wrangler.sh` |
+| `CDN_WORKER_NAME`               | _(optional)_ Worker name (default: `cdn-gitlab`) — used by `generate-wrangler.sh`                                                |
+| `VPC_SERVICE_ID`                | _(optional)_ VPC Service ID from Zero Trust dashboard — used by `generate-wrangler.sh`                                           |
+| **Subdomains**                  |                                                                                                                                  |
+| `REGISTRY_DOMAIN`               | Container Registry subdomain (e.g. `registry.gitlab.example.com`)                                                                |
+| `PAGES_DOMAIN`                  | GitLab Pages subdomain — wildcard cert auto-included (e.g. `pages.example.com`)                                                  |
+| **Networking**                  |                                                                                                                                  |
+| `INTERNAL_DNS`                  | LAN DNS resolver IP (for nginx OCSP stapling)                                                                                    |
+| `SSH_ALLOW_CIDR`                | CIDR for UFW SSH access (e.g. `10.0.0.0/8`)                                                                                      |
+| **System**                      |                                                                                                                                  |
+| `TIMEZONE`                      | IANA timezone (e.g. `America/New_York`) — used by `cloudflare/cloudflare-timing.sh`                                              |
+| **OmniAuth: Cloudflare Access** |                                                                                                                                  |
+| `OIDC_ISSUER`                   | OIDC issuer URL from Cloudflare Access application                                                                               |
+| `OIDC_CLIENT_ID`                | Application (client) ID                                                                                                          |
+| `OIDC_CLIENT_SECRET`            | Application secret                                                                                                               |
+| **OmniAuth: GitHub**            |                                                                                                                                  |
+| `GITHUB_APP_ID`                 | GitHub OAuth App client ID                                                                                                       |
+| `GITHUB_APP_SECRET`             | GitHub OAuth App client secret                                                                                                   |
+| **R2 Object Storage**           |                                                                                                                                  |
+| `R2_ENDPOINT`                   | S3-compatible endpoint URL                                                                                                       |
+| `R2_ACCESS_KEY`                 | R2 access key ID                                                                                                                 |
+| `R2_SECRET_KEY`                 | R2 secret access key                                                                                                             |
+| `R2_BUCKET_PREFIX`              | Bucket name prefix — creates `<prefix>-artifacts`, `<prefix>-lfs`, etc.                                                          |
+| `R2_BACKUP_BUCKET`              | Backup archive bucket name (default: `<R2_BUCKET_PREFIX>-backups`)                                                               |
+| **Runner**                      |                                                                                                                                  |
+| `RUNNER_NAME`                   | GitLab Runner description (e.g. `my-runner`)                                                                                     |
+| `RUNNER_TAGS`                   | Comma-separated tags (e.g. `self-hosted,linux,x64`)                                                                              |
 
 ---
 
@@ -307,7 +324,7 @@ Example output:
 ── DRY RUN (no changes will be made) ──
 
 ✓ SSH connected
-✓ All local files present (setup.sh, motd.sh, banner.txt, cloudflare-timing.sh, chrony.conf)
+✓ All local files present
 
 ── Dry run summary ──
   Target:         root@<LXC_IP>
@@ -566,7 +583,7 @@ The runner script is not run by `deploy.sh` — it's a separate step. The secret
 
 ```bash
 # Dry run first
-scp gitlabrunner.sh root@<LXC_IP>:/tmp/
+scp runners/gitlabrunner.sh root@<LXC_IP>:/tmp/
 ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh --dry-run'
 
 # Then for real
@@ -587,7 +604,7 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 
 **Verify:** Go to `https://gitlab.example.com/admin/runners` �� the runner should appear as online.
 
-> **Deprecation note:** `gitlabrunner.sh` uses the legacy `Ci::Runner.create!` method via Rails
+> **Deprecation note:** `runners/gitlabrunner.sh` uses the legacy `Ci::Runner.create!` method via Rails
 > console. GitLab 16.0 deprecated registration tokens in favor of the `glrt-` auth token flow
 > (`POST /api/v4/user/runners`). GitLab 17.0 removed the old registration endpoint. The Rails
 > console method still works but may be removed in GitLab 18+. The script is idempotent — re-running
@@ -596,11 +613,11 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 #### Install Runner CI Tools
 
 After the runner is registered, install the tools CI jobs need (Docker, Node.js, linters, etc.).
-The tool list is defined in `runner-apps.json` — edit it to match your project requirements.
+The tool list is defined in `runners/runner-apps.json` — edit it to match your project requirements.
 
 ```bash
 # Copy manifest + script to LXC
-scp runner-apps.json runner-apps.sh root@<LXC_IP>:/tmp/
+scp runners/runner-apps.json runners/runner-apps.sh root@<LXC_IP>:/tmp/
 
 # Dry run first
 ssh root@<LXC_IP> 'bash /tmp/runner-apps.sh --dry-run'
@@ -665,12 +682,12 @@ Requires `CF_ZONE_ID`, `CDN_DOMAIN`, and `VPC_SERVICE_ID` in `.env`.
 
 ```bash
 # Preview first
-./waf-rules.sh --dry-run
-./cache-rules.sh --dry-run
+./cloudflare/waf-rules.sh --dry-run
+./cloudflare/cache-rules.sh --dry-run
 
 # Then provision
-./waf-rules.sh
-./cache-rules.sh
+./cloudflare/waf-rules.sh
+./cloudflare/cache-rules.sh
 ```
 
 > See [`gitlab-cdn/README.md`](gitlab-cdn/README.md) for full CDN Worker documentation,
@@ -699,7 +716,7 @@ Runs locally. Reads `.env`, validates all variables, tests SSH, then:
 
 1. Creates `/root/.secrets/` on the LXC (mode 700)
 2. Writes `gitlab.env` (deployment variables) and `cloudflare.ini` (API token) to secrets dir
-3. SCPs `setup.sh`, `motd.sh`, `banner.txt`, `cloudflare-timing.sh`, `chrony.conf` to `/tmp/` on the LXC
+3. SCPs `setup.sh`, `motd.sh`, `config/banner.txt`, `cloudflare/cloudflare-timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
 4. Executes `setup.sh` remotely via SSH
 
 ### `ssh-config.sh`
@@ -714,7 +731,7 @@ through the Cloudflare Tunnel using client-side `cloudflared`:
 All operations are idempotent — existing entries are skipped. Requires `cloudflared` installed
 locally and `GITLAB_DOMAIN` + `LXC_HOST` in `.env`.
 
-### `waf-rules.sh`
+### `cloudflare/waf-rules.sh`
 
 Runs locally. Provisions 2 CDN-scoped WAF rules via Cloudflare API:
 
@@ -726,7 +743,7 @@ Runs locally. Provisions 2 CDN-scoped WAF rules via Cloudflare API:
 > Uses **read-merge-write** — preserves non-CDN WAF rules (bots, OCONUS challenges, etc.) in the
 > same phase. Only rules whose expression references `CDN_DOMAIN` are replaced.
 
-### `cache-rules.sh`
+### `cloudflare/cache-rules.sh`
 
 Runs locally. Provisions 2 CDN cache rules via Cloudflare API:
 
@@ -740,7 +757,7 @@ Uses **read-merge-write** to preserve non-CDN cache rules in the same phase (e.g
 Both CDN scripts require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` in your shell environment
 (Global API key).
 
-### `ratelimit-rules.sh`
+### `cloudflare/ratelimit-rules.sh`
 
 Runs locally. **Optional** — provisions a rate limit rule for the GitLab health endpoints via
 Cloudflare API:
@@ -752,8 +769,8 @@ Cloudflare API:
 | `/-/readiness` |               |                              |
 
 ```bash
-./ratelimit-rules.sh --dry-run   # preview
-./ratelimit-rules.sh             # provision
+./cloudflare/ratelimit-rules.sh --dry-run   # preview
+./cloudflare/ratelimit-rules.sh             # provision
 ```
 
 The health endpoints are already protected by Cloudflare's default DDoS mitigation and the tunnel
