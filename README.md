@@ -1,5 +1,14 @@
 # cf-gitlab
 
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/)
+[![Cloudflare Workers](https://img.shields.io/badge/Workers-F38020?logo=cloudflareworkers&logoColor=white)](https://developers.cloudflare.com/workers/)
+[![Cloudflare R2](https://img.shields.io/badge/R2-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/r2/)
+[![Zero Trust](https://img.shields.io/badge/Zero%20Trust-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/)
+[![GitLab CE](https://img.shields.io/badge/GitLab%20CE-FC6D26?logo=gitlab&logoColor=white)](https://about.gitlab.com/)
+[![Debian 13](https://img.shields.io/badge/Debian%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org/)
+[![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white)](#)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
+
 Deploys a fully configured GitLab CE instance on a Debian 13 LXC with:
 
 - Let's Encrypt TLS via Certbot (Cloudflare DNS-01, auto-renewing) for GitLab, Container Registry, and Pages
