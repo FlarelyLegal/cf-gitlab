@@ -1,0 +1,20 @@
+{
+  "name": "gitlab-cdn",
+  "version": "0.1.0",
+  "description": "Cloudflare Worker CDN proxy for GitLab static objects (raw files & archives)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.62.0"
+  }
+}

@@ -1,0 +1,14 @@
+# Secrets / environment files
+.env
+*.env
+!*.env.example
+.dev.vars
+
+# Cloudflare Workers
+.wrangler/
+
+# OS
+.DS_Store
+
+# Node
+node_modules/

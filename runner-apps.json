@@ -1,0 +1,67 @@
+{
+  "$schema": "runner-apps-schema",
+  "description": "Tools and packages required on the GitLab Runner LXC for CI/CD jobs.",
+
+  "apt": {
+    "description": "Packages installed via apt-get.",
+    "packages": [
+      {
+        "name": "build-essential",
+        "description": "GCC, G++, make — native compilation"
+      },
+      { "name": "curl", "description": "HTTP client" },
+      { "name": "wget", "description": "HTTP client (alt)" },
+      { "name": "jq", "description": "JSON processor for CI scripts" },
+      { "name": "unzip", "description": "Archive extraction" },
+      { "name": "zip", "description": "Archive creation" },
+      {
+        "name": "git",
+        "description": "Version control (also installed by GitLab, but ensures latest)"
+      },
+      { "name": "shellcheck", "description": "Shell script linter" },
+      { "name": "python3", "description": "Python runtime" },
+      { "name": "python3-pip", "description": "Python package manager" },
+      { "name": "rsync", "description": "File sync for deployments" },
+      { "name": "tree", "description": "Directory listing for debug output" },
+      { "name": "htop", "description": "System monitoring" }
+    ]
+  },
+
+  "docker": {
+    "description": "Docker CE + plugins. The gitlab-runner user is added to the docker group.",
+    "packages": [
+      { "name": "docker-ce", "description": "Docker engine" },
+      { "name": "docker-ce-cli", "description": "Docker CLI" },
+      { "name": "containerd.io", "description": "Container runtime" },
+      {
+        "name": "docker-buildx-plugin",
+        "description": "Multi-platform builds"
+      },
+      { "name": "docker-compose-plugin", "description": "Docker Compose v2" }
+    ],
+    "post_install": "usermod -aG docker gitlab-runner"
+  },
+
+  "node": {
+    "description": "Node.js LTS via NodeSource. Installed system-wide.",
+    "version": "22",
+    "method": "nodesource",
+    "packages": [{ "name": "nodejs", "description": "Node.js runtime + npm" }]
+  },
+
+  "npm_global": {
+    "description": "Global npm packages available to CI jobs.",
+    "packages": [
+      { "name": "pnpm", "description": "Fast, disk-efficient package manager" },
+      {
+        "name": "wrangler",
+        "description": "Cloudflare Workers CLI (includes miniflare)"
+      },
+      { "name": "prettier", "description": "Code formatter" },
+      { "name": "eslint", "description": "JavaScript/TypeScript linter" },
+      { "name": "@eslint/js", "description": "ESLint core JS config" },
+      { "name": "markdownlint-cli", "description": "Markdown linter" },
+      { "name": "jsonlint-cli", "description": "JSON linter/validator" }
+    ]
+  }
+}

@@ -1,0 +1,2 @@
+STORAGE_TOKEN=change-me-to-a-secure-random-token
+CACHE_PRIVATE_OBJECTS=false

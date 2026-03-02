@@ -1,0 +1,68 @@
+# ─── OS ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# ─── Editors / IDEs ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.windsurf/
+
+# ─── Environment / Secrets ──────────────────────────────────────
+.env
+*.env
+!*.env.example
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+
+# ─── Dependencies ───────────────────────────────────────────────
+node_modules/
+vendor/
+.bundle/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ─── Build / Output ─────────────────────────────────────────────
+dist/
+build/
+out/
+*.o
+*.so
+*.dylib
+*.exe
+*.dll
+coverage/
+.nyc_output/
+
+# ─── Logs ────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Docker ──────────────────────────────────────────────────────
+.docker/
+docker-compose.override.yml
+
+# ─── Terraform ───────────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+
+# ─── Misc ────────────────────────────────────────────────────────
+.cache/
+tmp/
+*.bak
+*.tmp
