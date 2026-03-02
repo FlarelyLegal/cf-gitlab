@@ -23,12 +23,15 @@ stages:
   - release
 
 include:
-  - local: .gitlab/ci/shellcheck.yml
-  - local: .gitlab/ci/shfmt.yml
-  - local: .gitlab/ci/prettier.yml
-  - local: .gitlab/ci/markdownlint.yml
-  - local: .gitlab/ci/codespell.yml
-  - local: .gitlab/ci/printf-check.yml
-  - local: .gitlab/ci/executable-check.yml
-  - local: .gitlab/ci/deploy.yml
-  - local: .gitlab/ci/release.yml
+  - project: "flarely-legal/ci-templates"
+    ref: main
+    file:
+      - "/shellcheck.yml"
+      - "/shfmt.yml"
+      - "/prettier.yml"
+      - "/markdownlint.yml"
+      - "/codespell.yml"
+      - "/printf-check.yml"
+      - "/executable-check.yml"
+      - "/deploy.yml"
+      - "/release.yml"
