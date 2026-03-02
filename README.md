@@ -223,62 +223,22 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ## Repository Structure
 
-```text
-.
-├── setup.sh                    Core: server-side LXC provisioning
-├── deploy.sh                   Core: local orchestrator (pushes secrets + scripts, runs setup.sh)
-├── validate.sh                 Core: read-only validation (34 checks)
-├── ssonly.sh                   Post-deploy: SSO-only lockdown
-├── motd.sh                     Post-deploy: sets /etc/motd from banner + variables
-├── ssh-config.sh               Local: configures ~/.ssh/config + known_hosts
-├── .env.example                Template with all required variables
-├── .gitlab-ci.yml              CI pipeline: stages + includes (see CI/CD section)
-├── .markdownlint.jsonc         Markdownlint config (disables MD013, MD041, MD028)
-├── .secret-detection-allowlist Exempts hook pattern-separator lines from detect-secrets
-│
-├── .gitlab/ci/               Modular CI job definitions (included by .gitlab-ci.yml)
-│   ├── shellcheck.yml          Lint shell scripts with ShellCheck
-│   ├── shfmt.yml               Check shell formatting (2-space, switch-case indent)
-│   ├── prettier.yml            Check Markdown/JSON/TS/YAML formatting
-│   ├── markdownlint.yml        Structural Markdown linting
-│   ├── codespell.yml           Typo detection across all files
-│   ├── printf-check.yml        Enforce printf-only (no bare echo)
-│   ├── executable-check.yml    Verify +x bit on scripts
-│   └── deploy.yml              Mirror main branch to GitHub after lint passes
-│
-├── cloudflare/               Cloudflare API scripts
-│   ├── waf-rules.sh            WAF custom rules (CDN skip, block, mTLS preserve)
-│   ├── cache-rules.sh          Cache rules (edge + browser TTLs, token bypass)
-│   ├── ratelimit-rules.sh      Rate limit rules (health endpoints)
-│   └── cloudflare-timing.sh    Chrony NTS time sync setup
-│
-├── runners/                  GitLab Runner scripts
-│   ├── gitlabrunner.sh         Co-located runner (installs on the GitLab LXC)
-│   ├── deploy-runner.sh        External runner orchestrator (local, pushes to remote LXC)
-│   ├── external-runner.sh      External runner setup (server-side, UFW + install + register)
-│   ├── runner-apps.sh          CI tool installer (reads runner-apps.json)
-│   └── runner-apps.json        Tool manifest (apt, Docker, Node, npm globals)
-│
-├── config/                   Static data files (see config/README.md)
-│   ├── banner.txt              ASCII art banner for MOTD
-│   └── chrony.conf             Chrony config (time.cloudflare.com, NTS)
-│
-├── optional/                 File hooks + server hooks (see optional/README.md)
-│   ├── notify-admin.rb         File hook: emails admin on project/group/user events
-│   ├── discord-failed-login.rb File hook: Discord alert on blocked-user login attempts
-│   ├── enforce-branch-naming   Server hook: rejects non-conventional branch names
-│   ├── block-file-extensions   Server hook: rejects binaries, archives, secrets
-│   ├── enforce-commit-message  Server hook: requires Conventional Commits format
-│   └── detect-secrets          Server hook: scans diffs for 94 secret patterns (40+ providers)
-│
-├── gitlab-cdn/               CDN Worker (see gitlab-cdn/README.md)
-│   ├── src/index.ts            Worker source (VPC Service Binding proxy)
-│   └── generate-wrangler.sh    Generates wrangler.jsonc from .env
-│
-└── snippets/                 Reference files (see snippets/README.md)
-    ├── rails-cheatsheet.sh     GitLab Rails console commands
-    └── standard.gitignore      Default .gitignore template
-```
+| Path             | Description                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `setup.sh`       | Core: server-side LXC provisioning                                                      |
+| `deploy.sh`      | Core: local orchestrator (pushes secrets + scripts, runs setup.sh)                      |
+| `validate.sh`    | Core: read-only validation (34 checks)                                                  |
+| `ssonly.sh`      | Post-deploy: SSO-only lockdown                                                          |
+| `motd.sh`        | Post-deploy: sets `/etc/motd` from banner + variables                                   |
+| `ssh-config.sh`  | Local: configures `~/.ssh/config` + known_hosts                                         |
+| `.env.example`   | Template with all required variables                                                    |
+| `.gitlab-ci.yml` | CI pipeline: stages + includes (see [CI/CD Pipeline](#cicd-pipeline))                   |
+| `cloudflare/`    | WAF, cache, rate-limit, and NTS time sync scripts                                       |
+| `runners/`       | Co-located and external runner deploy scripts                                           |
+| `config/`        | Static data files (banner, chrony config)                                               |
+| `optional/`      | File hooks + server hooks (see [`optional/README.md`](optional/README.md))              |
+| `gitlab-cdn/`    | CDN Worker via VPC Service Binding (see [`gitlab-cdn/README.md`](gitlab-cdn/README.md)) |
+| `snippets/`      | Rails cheatsheet and default `.gitignore` template                                      |
 
 ---
 
