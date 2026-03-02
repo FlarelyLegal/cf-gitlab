@@ -3,6 +3,7 @@
 #
 # Generates a Keep a Changelog (https://keepachangelog.com/en/1.1.0/) style
 # changelog from Conventional Commits (https://www.conventionalcommits.org/).
+# Used by: npm run changelog, npm run release, CI release pipeline
 
 [changelog]
 # Header prepended to the full changelog.
