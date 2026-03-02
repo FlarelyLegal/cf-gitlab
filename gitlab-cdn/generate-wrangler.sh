@@ -48,7 +48,8 @@ CDN_WORKER_NAME="${CDN_WORKER_NAME:-cdn-gitlab}"
 # ─── Generate wrangler.jsonc ─────────────────────────────────────────────────
 OUTPUT_FILE="${SCRIPT_DIR}/wrangler.jsonc"
 
-CONFIG=$(cat <<EOF
+CONFIG=$(
+  cat <<EOF
 {
   "\$schema": "node_modules/wrangler/config-schema.json",
   "name": "${CDN_WORKER_NAME}",
@@ -101,7 +102,7 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   printf '\n'
   printf '%s\n' "${CONFIG}"
 else
-  printf '%s\n' "${CONFIG}" > "${OUTPUT_FILE}"
+  printf '%s\n' "${CONFIG}" >"${OUTPUT_FILE}"
   printf '%s\n' "Wrote ${OUTPUT_FILE}"
   printf '%s\n' "  name:       ${CDN_WORKER_NAME}"
   printf '%s\n' "  route:      ${CDN_DOMAIN}"
