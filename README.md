@@ -39,6 +39,13 @@ Create a Proxmox LXC (or similar) with:
 - **Network:** Static IP on your LAN, DNS resolver configured
 - **SSH:** Root login enabled, your public key in `/root/.ssh/authorized_keys`
 
+> If you're on Proxmox, the [community scripts](https://community-scripts.github.io/ProxmoxVE/)
+> project has a one-liner to create a Debian LXC:
+>
+> ```bash
+> bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/debian.sh)"
+> ```
+
 Verify SSH access from your local machine:
 
 ```bash
