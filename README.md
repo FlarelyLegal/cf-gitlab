@@ -76,7 +76,7 @@ cloudflared service install <TUNNEL_TOKEN>
 ```
 
 Note the **Tunnel ID** — you'll need it for DNS records in the next step. Find it in the
-[Zero Trust dashboard](https://one.dash.cloudflare.com/) → **Networks → Tunnels**, or from
+[Zero Trust dashboard](https://dash.cloudflare.com/one) → **Networks → Connectors → Cloudflare Tunnels**, or from
 the output of `cloudflared tunnel info`.
 
 > Public hostname configuration happens after GitLab is installed — see [Step 4](#step-4-configure-tunnel-hostnames).
@@ -121,7 +121,7 @@ Also note your **Zone ID** from the zone's Overview page (right sidebar).
 You need **two** Access applications: one to protect the domain, and one to act as the OIDC
 identity provider for GitLab's OmniAuth.
 
-In [Cloudflare One](https://one.dash.cloudflare.com/) → **Access controls** → **Applications**:
+In [Cloudflare One](https://dash.cloudflare.com/one) → **Access controls** → **Applications**:
 
 **5a. Self-hosted application** (protects the domain):
 
@@ -390,14 +390,14 @@ This pushes secrets and scripts to the LXC, then executes `setup.sh` remotely. T
 ### Step 4: Configure Tunnel Hostnames
 
 Now that GitLab is installed and running, add public hostnames to your tunnel in the
-[Zero Trust dashboard](https://one.dash.cloudflare.com/) → **Networks → Tunnels → your tunnel → Public Hostname**.
+[Zero Trust dashboard](https://dash.cloudflare.com/one) → **Networks → Connectors → Cloudflare Tunnels → your tunnel → Public Hostname**.
 
 | Hostname                      | Service              | Settings                                                           |
 | ----------------------------- | -------------------- | ------------------------------------------------------------------ |
 | `gitlab.example.com`          | `https://127.0.0.1`  | HTTP Host Header: `gitlab.example.com`, No TLS Verify: ON          |
 | `registry.gitlab.example.com` | `https://127.0.0.1`  | HTTP Host Header: `registry.gitlab.example.com`, No TLS Verify: ON |
 | `pages.example.com`           | `https://127.0.0.1`  | HTTP Host Header: `pages.example.com`, No TLS Verify: ON           |
-| `ssh.gitlab.example.com`      | `ssh://127.0.0.1:22` | Disable Chunked Encoding: ON                                       |
+| `ssh.gitlab.example.com`      | `ssh://127.0.0.1:22` | (none required)                                                    |
 
 > **No TLS Verify** is required because the tunnel terminates at `127.0.0.1` where nginx serves
 > the certbot-issued certificate. The tunnel itself is encrypted end-to-end (QUIC).
@@ -640,13 +640,13 @@ for faster pipeline runs.
 
 The CDN Worker caches public raw file and archive downloads at Cloudflare's edge, offloading
 bandwidth from the GitLab instance. It connects to the private origin via a
-[Workers VPC Service Binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/)
-through the same `cloudflared` tunnel from Step 4 — the origin is never exposed publicly.
+[Workers VPC Service](https://developers.cloudflare.com/workers-vpc/)
+through the same `cloudflared` tunnel from Step 4, so the origin is never exposed publicly.
 
 ```text
 User → cdn.gitlab.example.com → Cloudflare Edge (cached)
          ↓ (cache miss)
-       CDN Worker → VPC Service Binding → cloudflared tunnel → GitLab nginx
+       CDN Worker → Workers VPC Service → cloudflared tunnel → GitLab nginx
                                                                    ↓ (proxy_download)
                                                                   R2
 ```
@@ -846,9 +846,10 @@ for full documentation.
 
 **Key design decisions:**
 
-- **VPC Service Binding** — the Worker reaches the private GitLab origin through Cloudflare's
-  private network (via the same `cloudflared` tunnel). The origin is never exposed publicly.
-  HTTP is used inside the tunnel (QUIC encrypts end-to-end).
+- **Workers VPC** — the Worker reaches the private GitLab origin through a
+  [VPC Service](https://developers.cloudflare.com/workers-vpc/) via the same `cloudflared`
+  tunnel. The origin is never exposed publicly. HTTP is used inside the tunnel (QUIC encrypts
+  end-to-end).
 - **Indirect R2 access** — the Worker does not read from R2 directly. It fetches from GitLab
   (which has `proxy_download = true`), and GitLab fetches from R2 via the S3 API. The Worker
   caches the final response at the edge, so subsequent requests skip both GitLab and R2.

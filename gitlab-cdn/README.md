@@ -7,10 +7,10 @@ Cloudflare Worker that acts as a caching CDN proxy for GitLab static objects (ra
 ## Architecture
 
 ```text
-User → Cloudflare Edge (cached) → VPC Service Binding → cloudflared tunnel → GitLab nginx → R2
+User → Cloudflare Edge (cached) → Workers VPC Service → cloudflared tunnel → GitLab nginx → R2
 ```
 
-The Worker intercepts `/raw/` and `/-/archive/` requests on `CDN_DOMAIN`, caches public responses at the edge, and adds CORS headers. It reaches the private GitLab instance through a [Workers VPC Service Binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) — the origin is never exposed to the public internet.
+The Worker intercepts `/raw/` and `/-/archive/` requests on `CDN_DOMAIN`, caches public responses at the edge, and adds CORS headers. It reaches the private GitLab instance through a [Workers VPC Service](https://developers.cloudflare.com/workers-vpc/), so the origin is never exposed to the public internet.
 
 ### What gets cached
 
@@ -38,7 +38,7 @@ On cache hit, steps 2-4 are skipped entirely — the edge serves the cached resp
 ### 1. Prerequisites
 
 - `cloudflared` tunnel running on the GitLab LXC (see main README [Prerequisites Step 2](../README.md#2-cloudflare-tunnel))
-- VPC Service ID from the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/) → Networks → Tunnels → your tunnel → VPC tab
+- VPC Service ID, created via the [Workers VPC API](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/) or the [Zero Trust dashboard](https://dash.cloudflare.com/one) → Networks → Connectors → Cloudflare Tunnels → your tunnel
 - `CDN_DOMAIN` DNS record (created automatically by `wrangler deploy` via `custom_domain`)
 
 ### 2. Configure
@@ -94,7 +94,7 @@ Set in `.dev.vars` for local development or via the Cloudflare dashboard for pro
 
 ## Features
 
-- **VPC Service Binding** — reaches the private GitLab origin through Cloudflare's private network (no public exposure)
+- **Workers VPC** — reaches the private GitLab origin through a [VPC Service](https://developers.cloudflare.com/workers-vpc/) (no public exposure)
 - **Smart Placement** — Worker runs at the edge closest to the origin for optimal latency
 - **Edge caching** — public content cached at Cloudflare's edge (24h edge TTL, 1h browser TTL)
 - **ETag revalidation** — conditional requests (`If-None-Match`) revalidate with origin, returning 304 when content hasn't changed
@@ -113,7 +113,7 @@ npm run lint           # eslint
 npm run format         # prettier
 ```
 
-> `--remote` is required for local development because VPC Service Bindings don't work in local mode.
+> `--remote` is required for local development because Workers VPC bindings don't work in local mode.
 
 ## Files
 
