@@ -16,13 +16,13 @@
   - |
     TAG="${CI_COMMIT_TAG}"
     printf "Generating release notes for %s with git-cliff...\n" "${TAG}"
-    git-cliff --latest --strip header > /tmp/release-notes.md
-    if [ ! -s /tmp/release-notes.md ]; then
+    git-cliff --latest --strip header > release-notes.md
+    if [ ! -s release-notes.md ]; then
       printf "WARNING: git-cliff produced empty notes for %s, using fallback.\n" "${TAG}"
-      printf "Release %s" "${TAG}" > /tmp/release-notes.md
+      printf "Release %s" "${TAG}" > release-notes.md
     fi
     printf "Extracted %s bytes of release notes for %s\n" \
-      "$(wc -c < /tmp/release-notes.md | tr -d ' ')" "${TAG}"
+      "$(wc -c < release-notes.md | tr -d ' ')" "${TAG}"
 
 # ─── GitLab Release ──────────────────────────────────────────────────────────
 # Uses release-cli to create a release on the self-hosted GitLab instance.
@@ -37,7 +37,7 @@ release-gitlab:
       release-cli create \
         --name "${CI_COMMIT_TAG}" \
         --tag-name "${CI_COMMIT_TAG}" \
-        --description /tmp/release-notes.md
+        --description release-notes.md
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/
 
@@ -55,7 +55,7 @@ release-github:
   script:
     - *extract-changelog
     - |
-      NOTES_JSON=$(jq -Rs '.' /tmp/release-notes.md)
+      NOTES_JSON=$(jq -Rs '.' release-notes.md)
       RESPONSE=$(curl -sf -X POST \
         -H "Authorization: token ${gitlab_self_hosted_mirror}" \
         -H "Accept: application/vnd.github+json" \
