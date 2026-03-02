@@ -37,7 +37,7 @@ On cache hit, steps 2-4 are skipped entirely — the edge serves the cached resp
 
 ### 1. Prerequisites
 
-- `cloudflared` tunnel running on the GitLab LXC (see main README Step 7)
+- `cloudflared` tunnel running on the GitLab LXC (see main README [Prerequisites Step 2](../README.md#2-cloudflare-tunnel))
 - VPC Service ID from the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/) → Networks → Tunnels → your tunnel → VPC tab
 - `CDN_DOMAIN` DNS record (created automatically by `wrangler deploy` via `custom_domain`)
 

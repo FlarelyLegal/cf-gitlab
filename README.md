@@ -203,14 +203,26 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 ```text
 .
-├── setup.sh                  Core: server-side LXC provisioning
-├── deploy.sh                 Core: local orchestrator (pushes secrets + scripts, runs setup.sh)
-├── validate.sh               Core: read-only validation (34 checks)
-├── ssonly.sh                 Post-deploy: SSO-only lockdown
-├── motd.sh                   Post-deploy: sets /etc/motd from banner + variables
-├── ssh-config.sh             Local: configures ~/.ssh/config + known_hosts
-├── .env.example              Template with all required variables
-├── .gitlab-ci.yml            CI pipeline (shellcheck lint)
+├── setup.sh                    Core: server-side LXC provisioning
+├── deploy.sh                   Core: local orchestrator (pushes secrets + scripts, runs setup.sh)
+├── validate.sh                 Core: read-only validation (34 checks)
+├── ssonly.sh                   Post-deploy: SSO-only lockdown
+├── motd.sh                     Post-deploy: sets /etc/motd from banner + variables
+├── ssh-config.sh               Local: configures ~/.ssh/config + known_hosts
+├── .env.example                Template with all required variables
+├── .gitlab-ci.yml              CI pipeline: stages + includes (see CI/CD section)
+├── .markdownlint.jsonc         Markdownlint config (disables MD013, MD041, MD028)
+├── .secret-detection-allowlist Exempts hook pattern-separator lines from detect-secrets
+│
+├── .gitlab/ci/               Modular CI job definitions (included by .gitlab-ci.yml)
+│   ├── shellcheck.yml          Lint shell scripts with ShellCheck
+│   ├── shfmt.yml               Check shell formatting (2-space, switch-case indent)
+│   ├── prettier.yml            Check Markdown/JSON/TS/YAML formatting
+│   ├── markdownlint.yml        Structural Markdown linting
+│   ├── codespell.yml           Typo detection across all files
+│   ├── printf-check.yml        Enforce printf-only (no bare echo)
+│   ├── executable-check.yml    Verify +x bit on scripts
+│   └── deploy.yml              Mirror main branch to GitHub after lint passes
 │
 ├── cloudflare/               Cloudflare API scripts
 │   ├── waf-rules.sh            WAF custom rules (CDN skip, block, mTLS preserve)
@@ -225,17 +237,23 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 │   ├── runner-apps.sh          CI tool installer (reads runner-apps.json)
 │   └── runner-apps.json        Tool manifest (apt, Docker, Node, npm globals)
 │
-├── config/                   Static data files
+├── config/                   Static data files (see config/README.md)
 │   ├── banner.txt              ASCII art banner for MOTD
 │   └── chrony.conf             Chrony config (time.cloudflare.com, NTS)
 │
 ├── optional/                 File hooks + server hooks (see optional/README.md)
+│   ├── notify-admin.rb         File hook: emails admin on project/group/user events
+│   ├── discord-failed-login.rb File hook: Discord alert on blocked-user login attempts
+│   ├── enforce-branch-naming   Server hook: rejects non-conventional branch names
+│   ├── block-file-extensions   Server hook: rejects binaries, archives, secrets
+│   ├── enforce-commit-message  Server hook: requires Conventional Commits format
+│   └── detect-secrets          Server hook: scans diffs for 94 secret patterns (40+ providers)
 │
 ├── gitlab-cdn/               CDN Worker (see gitlab-cdn/README.md)
 │   ├── src/index.ts            Worker source (VPC Service Binding proxy)
 │   └── generate-wrangler.sh    Generates wrangler.jsonc from .env
 │
-└── snippets/                 Reference files
+└── snippets/                 Reference files (see snippets/README.md)
     ├── rails-cheatsheet.sh     GitLab Rails console commands
     └── standard.gitignore      Default .gitignore template
 ```
@@ -601,7 +619,7 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 5. Starts the service and verifies it's alive
 6. Cleans up temp files
 
-**Verify:** Go to `https://gitlab.example.com/admin/runners` �� the runner should appear as online.
+**Verify:** Go to `https://gitlab.example.com/admin/runners`. The runner should appear as online.
 
 > **Deprecation note:** `runners/gitlabrunner.sh` uses the legacy `Ci::Runner.create!` method via Rails
 > console. GitLab 16.0 deprecated registration tokens in favor of the `glrt-` auth token flow
@@ -692,6 +710,36 @@ Requires `CF_ZONE_ID`, `CDN_DOMAIN`, and `VPC_SERVICE_ID` in `.env`.
 > See [`gitlab-cdn/README.md`](gitlab-cdn/README.md) for full CDN Worker documentation,
 > architecture details, and development instructions.
 
+### Step 11: Install Hooks (optional)
+
+Install server hooks (pre-receive) and file hooks for push policy enforcement and event
+notifications. See [`optional/README.md`](optional/README.md) for full details.
+
+**Server hooks** (synchronous, can reject pushes):
+
+```bash
+# On the GitLab LXC:
+mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+scp optional/enforce-branch-naming optional/block-file-extensions \
+    optional/enforce-commit-message optional/detect-secrets \
+    root@<LXC_IP>:/var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+ssh root@<LXC_IP> 'chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/* && \
+    chown -R git:git /var/opt/gitlab/gitaly/custom_hooks'
+```
+
+> Requires `gitaly['configuration'] = { hooks: { custom_hooks_dir: '/var/opt/gitlab/gitaly/custom_hooks' } }`
+> in `gitlab.rb` + `gitlab-ctl reconfigure`. Hooks are global (apply to all repos).
+
+**File hooks** (asynchronous, cannot block actions):
+
+```bash
+scp optional/notify-admin.rb optional/discord-failed-login.rb \
+    root@<LXC_IP>:/opt/gitlab/embedded/service/gitlab-rails/file_hooks/
+ssh root@<LXC_IP> 'chmod +x /opt/gitlab/embedded/service/gitlab-rails/file_hooks/*.rb'
+```
+
+Validate with `gitlab-rake file_hooks:validate` on the LXC.
+
 ---
 
 ## Script Details
@@ -729,6 +777,35 @@ through the Cloudflare Tunnel using client-side `cloudflared`:
 
 All operations are idempotent — existing entries are skipped. Requires `cloudflared` installed
 locally and `GITLAB_DOMAIN` + `LXC_HOST` in `.env`.
+
+### `runners/deploy-runner.sh`
+
+Runs locally. Orchestrates deployment of an external GitLab Runner to a dedicated LXC:
+
+1. Loads `.env` for `GITLAB_DOMAIN`, `ORG_NAME`, `ORG_URL`
+2. Validates SSH connectivity and required local files
+3. Pushes `runner.env` secrets to `/root/.secrets/` on the runner LXC
+4. SCPs `external-runner.sh`, `runner-apps.sh`, `runner-apps.json`, and `banner.txt` to `/tmp/`
+5. Launches `external-runner.sh` in a `screen` session (survives SSH disconnects)
+6. Streams live output back to the terminal and reports the exit code
+
+Requires `RUNNER_LXC_HOST` and `RUNNER_GITLAB_PAT` as environment variables.
+See [External Self-Hosted Runner](#external-self-hosted-runner) for full usage.
+
+### `runners/external-runner.sh`
+
+Runs on the runner LXC (server-side). Installs and registers a GitLab Runner:
+
+1. Sets MOTD with runner info
+2. Configures UFW (default deny, SSH from `SSH_ALLOW_CIDR`)
+3. Installs `gitlab-runner` + helper images from the GitLab APT repository
+4. Creates a runner token via `POST /api/v4/user/runners` (new `glrt-` token flow)
+5. Registers the runner with shell executor
+6. Starts and verifies the runner service
+7. Installs CI tools from `runner-apps.json` via `runner-apps.sh`
+
+Reads config from `/root/.secrets/runner.env` (pushed by `deploy-runner.sh`). Idempotent:
+skips runner creation if one with the same name already exists.
 
 ### `cloudflare/waf-rules.sh`
 
@@ -804,6 +881,72 @@ for full documentation.
   but never cached. Public content (no token) is cached for 24h at the edge, 1h in the browser.
 - **Analytics Engine** — every request logs cache status, latency, content size, and path type
   to a `gitlab_cdn` Analytics Engine dataset for monitoring.
+
+---
+
+## CI/CD Pipeline
+
+The repo uses a modular CI pipeline defined in `.gitlab-ci.yml` with job files under `.gitlab/ci/`.
+All lint jobs run on every push to `main` and on merge request events. The deploy stage runs only
+on `main`.
+
+| Stage  | Job              | What it checks                                                    |
+| ------ | ---------------- | ----------------------------------------------------------------- |
+| lint   | shellcheck       | Shell script correctness (all `.sh` files + hook scripts)         |
+| lint   | shfmt            | Shell formatting (`-i 2 -ci -bn`). Excludes `rails-cheatsheet.sh` |
+| lint   | prettier         | Markdown, JSON, TypeScript, and YAML formatting                   |
+| lint   | markdownlint     | Structural Markdown issues (headings, lists, code fences)         |
+| lint   | codespell        | Common typos across all files                                     |
+| lint   | printf-check     | No bare `echo` usage in scripts (heredoc blocks exempt)           |
+| lint   | executable-check | Verify `+x` bit on scripts. Excludes `rails-cheatsheet.sh`        |
+| deploy | mirror-github    | Force-pushes `main` to GitHub (runs after all lint jobs pass)     |
+
+> Secret detection is handled by the `detect-secrets` pre-receive server hook, which blocks
+> pushes containing leaked credentials before they enter the repo. See
+> [`optional/README.md`](optional/README.md) for details.
+
+### Runner requirements
+
+Jobs may run on any registered runner. Tools required by CI jobs must be installed on **all**
+runner hosts:
+
+| Tool              | Required by   | Install method                     |
+| ----------------- | ------------- | ---------------------------------- |
+| shellcheck        | shellcheck    | `apt-get install shellcheck`       |
+| shfmt             | shfmt         | Binary from GitHub Releases        |
+| node + npm        | prettier      | NodeSource (Node 22 LTS)           |
+| markdownlint-cli2 | markdownlint  | `npm install -g markdownlint-cli2` |
+| codespell         | codespell     | `pip3 install codespell`           |
+| git               | mirror-github | `apt-get install git`              |
+
+The `runner-apps.sh` script installs most of these. Tools added after initial setup (shfmt,
+codespell, markdownlint-cli2) must be installed manually on each runner.
+
+---
+
+## Repository Mirroring
+
+The repo is hosted on a self-hosted GitLab instance and mirrored to two external platforms:
+
+```text
+local push → self-hosted GitLab (origin)
+                ├── CI pipeline runs lint + deploy stage
+                │   └── mirror-github job → GitHub (force push)
+                └── push mirror (built-in) → gitlab.com
+```
+
+- **GitHub** (`https://github.com/FlarelyLegal/cf-gitlab`) is updated by the `mirror-github` CI
+  job in the deploy stage. It uses a masked CI/CD variable (`gitlab_self_hosted_mirror`) containing
+  a GitHub Personal Access Token with `public_repo` scope. The job runs `git push --force` to
+  keep GitHub in sync after all lint checks pass.
+
+- **gitlab.com** (`https://gitlab.com/tim548/gitlab-self-hosted`) is updated by GitLab's built-in
+  push mirror feature. This runs automatically on every push to the self-hosted instance, independent
+  of CI. CI/CD is disabled on the gitlab.com mirror to prevent shared runners from running the pipeline.
+
+> The local `origin` remote fetches from GitHub (for redundancy) but pushes only to the self-hosted
+> GitLab instance. This ensures all code goes through the self-hosted CI pipeline and server hooks
+> before reaching external mirrors.
 
 ---
 
@@ -966,11 +1109,69 @@ iptables -A OUTPUT -m owner --uid-owner gitlab-runner -p tcp --dport 8075 -j DRO
 ## External Self-Hosted Runner
 
 For workloads that need Docker or full network isolation, use a dedicated runner LXC instead of
-the co-located shell executor. This section is planned but not yet automated.
+the co-located shell executor. Two scripts handle this:
 
-**Target:** Dedicated runner LXC with Docker executor, separate registration token, and
-network-level isolation from the GitLab data plane. The LXC should have Docker, Node (fnm),
-pnpm, and build-essential installed at minimum.
+- **`runners/deploy-runner.sh`** runs locally, pushes config and scripts to the runner LXC, then
+  executes the setup remotely (same pattern as `deploy.sh` for the GitLab LXC).
+- **`runners/external-runner.sh`** runs on the runner LXC itself, installs and registers the
+  runner via the GitLab API, configures UFW, and installs CI tools from `runner-apps.json`.
+
+### Before you start
+
+- A separate Debian 13 LXC with root SSH access from your workstation
+- A GitLab Personal Access Token with `create_runner` scope
+- `GITLAB_DOMAIN`, `ORG_NAME`, `ORG_URL` set in `.env`
+
+### Deploy
+
+```bash
+# Dry run first
+RUNNER_LXC_HOST=root@<runner-ip> \
+RUNNER_GITLAB_PAT=<your-personal-access-token> \
+RUNNER_RUNNER_NAME=runner-1 \
+RUNNER_RUNNER_TAGS=linux,x64 \
+  ./runners/deploy-runner.sh --dry-run
+
+# Deploy
+RUNNER_LXC_HOST=root@<runner-ip> \
+RUNNER_GITLAB_PAT=<your-personal-access-token> \
+RUNNER_RUNNER_NAME=runner-1 \
+RUNNER_RUNNER_TAGS=linux,x64 \
+  ./runners/deploy-runner.sh
+```
+
+| Variable                | Default                      | Description                               |
+| ----------------------- | ---------------------------- | ----------------------------------------- |
+| `RUNNER_LXC_HOST`       | (required)                   | SSH target for the runner LXC             |
+| `RUNNER_GITLAB_PAT`     | (required)                   | PAT with `create_runner` scope            |
+| `RUNNER_RUNNER_NAME`    | `runner-1`                   | Runner description shown in GitLab admin  |
+| `RUNNER_RUNNER_TAGS`    | `linux,x64`                  | Comma-separated tags for job matching     |
+| `RUNNER_SSH_ALLOW_CIDR` | `SSH_ALLOW_CIDR` from `.env` | CIDR for UFW SSH access on the runner LXC |
+
+### What happens on the runner LXC (`external-runner.sh`)
+
+1. Sets MOTD with runner info
+2. Configures UFW (default deny incoming, SSH from `SSH_ALLOW_CIDR`)
+3. Adds GitLab Runner APT repository
+4. Installs `gitlab-runner` + helper images
+5. Creates a runner authentication token via GitLab API (`POST /api/v4/user/runners`)
+6. Registers the runner (shell executor, `glrt-` token flow)
+7. Starts and verifies the runner service
+8. Installs CI tools from `runner-apps.json` via `runner-apps.sh`
+
+The script is idempotent. If a runner with the same name already exists, creation is skipped.
+
+> The deploy script runs `external-runner.sh` inside a `screen` session on the runner LXC,
+> so the setup survives SSH disconnects. Progress is streamed back to your terminal in real time.
+
+**Verify:** Go to `https://gitlab.example.com/admin/runners`. The runner should appear as online.
+
+### Runner tool requirements
+
+CI jobs may run on any registered runner. If you add new CI checks (linters, formatters, etc.),
+install the required tools on **all** runner hosts, not just one. The `runner-apps.sh` script
+handles bulk installation from `runner-apps.json`, but tools installed manually (like `shfmt`,
+`codespell`, or `markdownlint-cli2`) must be installed on each runner separately.
 
 ---
 
