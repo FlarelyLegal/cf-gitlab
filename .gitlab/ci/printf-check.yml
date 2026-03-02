@@ -1,0 +1,32 @@
+# ─── Printf Check ───────────────────────────────────────────────────────────
+# Enforce printf-only rule: no bare echo usage in shell scripts.
+# Allows echo inside heredoc blocks (cat <<) that write standalone scripts.
+printf-check:
+  stage: lint
+  script:
+    - |
+      SCRIPTS=$(find . -name '*.sh' -o -name 'detect-secrets' \
+        -o -name 'enforce-branch-naming' -o -name 'block-file-extensions' \
+        -o -name 'enforce-commit-message' | grep -v node_modules | grep -v .git | sort)
+      FAIL=0
+      for f in $SCRIPTS; do
+        # Strip heredoc blocks (between <<'?EOF/DELIM and EOF/DELIM) then check for echo
+        HITS=$(sed '/<<[[:space:]]*['\''\"\\]*[A-Z_]*$/,/^[A-Z_]*$/d' "$f" | grep -nE '^\s*(echo |echo$)' || true)
+        if [ -n "$HITS" ]; then
+          printf "  ✗ %s\n" "$f"
+          printf "%s\n" "$HITS" | while IFS= read -r line; do
+            printf "      %s\n" "$line"
+          done
+          FAIL=1
+        else
+          printf "  ✓ %s\n" "$f"
+        fi
+      done
+      if [ "$FAIL" -eq 1 ]; then
+        printf "\nFound bare echo usage. Use printf instead.\n"
+        exit 1
+      fi
+      printf "\nAll scripts use printf only.\n"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
