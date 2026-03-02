@@ -11,5 +11,5 @@ stages:
   - deploy
 
 include:
-  - local: .gitlab/ci/lint.yml
+  - local: .gitlab/ci/shellcheck.yml
   - local: .gitlab/ci/deploy.yml
