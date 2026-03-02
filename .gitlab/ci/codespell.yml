@@ -5,6 +5,3 @@ codespell:
   script:
     - printf "codespell %s\n" "$(codespell --version)"
     - codespell --skip=".git,node_modules,*.lock,.jj"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

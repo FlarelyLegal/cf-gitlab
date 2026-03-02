@@ -8,4 +8,4 @@ mirror-github:
   script:
     - git push --force "https://${gitlab_self_hosted_mirror}@github.com/FlarelyLegal/cf-gitlab.git" HEAD:main
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

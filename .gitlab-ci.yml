@@ -6,6 +6,15 @@
 # which blocks pushes containing leaked credentials before they enter the repo.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Prevent duplicate pipelines: if a branch push has an open MR, only the MR
+# pipeline runs. Direct pushes to branches (including main) still trigger.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
 stages:
   - lint
   - deploy

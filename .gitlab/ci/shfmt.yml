@@ -25,6 +25,3 @@ shfmt:
         exit 1
       fi
       printf "\nAll scripts formatted correctly.\n"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

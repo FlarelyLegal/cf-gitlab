@@ -6,6 +6,3 @@ prettier:
   script:
     - printf "Prettier %s\n" "$(npx prettier --version)"
     - npx prettier --check "**/*.{md,json,ts,yml,yaml}" --ignore-path .gitignore
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
