@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# frozen_string_literal: true
 
 # ─── GitLab Server Hook: Branch Naming Convention ────────────────────────────
 # Rejects pushes to branches that don't match an allowed naming pattern.
@@ -13,15 +12,10 @@
 #   main, master
 #
 # Install (global, all repos):
-#   cp enforce-branch-naming /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/
-#   chmod +x /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/enforce-branch-naming
-#   mkdir -p /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d
-#
-# Install (single repo via Gitaly):
-#   Find the repo path with: gitlab-rails runner "puts Project.find_by_full_path('<namespace>/<project>').repository.path"
-#   mkdir -p <repo_path>/custom_hooks/pre-receive.d
-#   cp enforce-branch-naming <repo_path>/custom_hooks/pre-receive.d/
-#   chmod +x <repo_path>/custom_hooks/pre-receive.d/enforce-branch-naming
+#   mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+#   cp enforce-branch-naming /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+#   chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-branch-naming
+#   chown git:git /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-branch-naming
 #
 # GitLab docs: https://docs.gitlab.com/administration/server_hooks.html
 # ─────────────────────────────────────────────────────────────────────────────

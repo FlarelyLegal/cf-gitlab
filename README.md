@@ -210,6 +210,7 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 ├── motd.sh                   Post-deploy: sets /etc/motd from banner + variables
 ├── ssh-config.sh             Local: configures ~/.ssh/config + known_hosts
 ├── .env.example              Template with all required variables
+├── .gitlab-ci.yml            CI pipeline (shellcheck lint)
 │
 ├── cloudflare/               Cloudflare API scripts
 │   ├── waf-rules.sh            WAF custom rules (CDN skip, block, mTLS preserve)
@@ -228,9 +229,7 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 │   ├── banner.txt              ASCII art banner for MOTD
 │   └── chrony.conf             Chrony config (time.cloudflare.com, NTS)
 │
-├── optional/                 Optional file hooks (see optional/README.md)
-│   ├── notify-admin.rb         Email admin on project/group/user events
-│   └── discord-failed-login.rb Discord alert on failed login attempts
+├── optional/                 File hooks + server hooks (see optional/README.md)
 │
 ├── gitlab-cdn/               CDN Worker (see gitlab-cdn/README.md)
 │   ├── src/index.ts            Worker source (VPC Service Binding proxy)

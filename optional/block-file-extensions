@@ -5,9 +5,10 @@
 # compiled artifacts, etc.). Keeps repositories clean.
 #
 # Install (global, all repos):
-#   mkdir -p /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d
-#   cp block-file-extensions /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/
-#   chmod +x /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/block-file-extensions
+#   mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+#   cp block-file-extensions /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+#   chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/block-file-extensions
+#   chown git:git /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/block-file-extensions
 #
 # GitLab docs: https://docs.gitlab.com/administration/server_hooks.html
 # ─────────────────────────────────────────────────────────────────────────────

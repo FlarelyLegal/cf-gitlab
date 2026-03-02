@@ -19,9 +19,10 @@
 # Merge commits and reverts are always allowed.
 #
 # Install (global, all repos):
-#   mkdir -p /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d
-#   cp enforce-commit-message /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/
-#   chmod +x /opt/gitlab/embedded/service/gitlab-rails/custom_hooks/pre-receive.d/enforce-commit-message
+#   mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+#   cp enforce-commit-message /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+#   chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-commit-message
+#   chown git:git /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-commit-message
 #
 # GitLab docs: https://docs.gitlab.com/administration/server_hooks.html
 # ─────────────────────────────────────────────────────────────────────────────
