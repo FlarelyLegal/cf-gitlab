@@ -27,3 +27,7 @@ printf-check:
         exit 1
       fi
       printf "\nAll scripts use printf only.\n"
+  rules:
+    - changes:
+        - "**/*.sh"
+        - "optional/*"

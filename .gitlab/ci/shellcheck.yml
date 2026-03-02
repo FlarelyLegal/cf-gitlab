@@ -24,3 +24,7 @@ shellcheck:
         exit 1
       fi
       printf "\nAll %s scripts passed.\n" "$COUNT"
+  rules:
+    - changes:
+        - "**/*.sh"
+        - "optional/*"

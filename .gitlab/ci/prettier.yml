@@ -6,3 +6,10 @@ prettier:
   script:
     - printf "Prettier %s\n" "$(npx prettier --version)"
     - npx prettier --check "**/*.{md,json,ts,yml,yaml}" --ignore-path .gitignore
+  rules:
+    - changes:
+        - "**/*.md"
+        - "**/*.json"
+        - "**/*.ts"
+        - "**/*.yml"
+        - "**/*.yaml"

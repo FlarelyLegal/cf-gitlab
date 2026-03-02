@@ -25,3 +25,7 @@ shfmt:
         exit 1
       fi
       printf "\nAll scripts formatted correctly.\n"
+  rules:
+    - changes:
+        - "**/*.sh"
+        - "optional/*"

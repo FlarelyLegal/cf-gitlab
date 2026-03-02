@@ -22,3 +22,7 @@ executable-check:
         exit 1
       fi
       printf "\nAll scripts are executable.\n"
+  rules:
+    - changes:
+        - "**/*.sh"
+        - "optional/*"

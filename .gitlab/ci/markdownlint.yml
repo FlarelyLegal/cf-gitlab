@@ -6,3 +6,7 @@ markdownlint:
   script:
     - printf "markdownlint-cli2 %s\n" "$(markdownlint-cli2 --version 2>&1 | head -1)"
     - markdownlint-cli2 "**/*.md" "#**/node_modules/**"
+  rules:
+    - changes:
+        - "**/*.md"
+        - ".markdownlint.jsonc"
