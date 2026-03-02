@@ -193,7 +193,7 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
    ```bash
    for suffix in artifacts external-diffs lfs uploads packages dependency-proxy terraform-state pages ci-secure-files backups; do
-     npx wrangler r2 bucket create "gitlab-${suffix}"
+     CLOUDFLARE_ACCOUNT_ID="<YOUR_ACCOUNT_ID>" npx wrangler r2 bucket create "gitlab-${suffix}"
    done
    ```
 
@@ -344,8 +344,19 @@ Example output:
 ./deploy.sh
 ```
 
-This pushes secrets and scripts to the LXC, then executes `setup.sh` remotely. Takes ~10–15 minutes
+This pushes secrets and scripts to the LXC, then executes `setup.sh` remotely. Takes ~10-15 minutes
 (most of the time is GitLab CE package installation and initial reconfigure).
+
+> **Tip:** The remote `setup.sh` execution is a long SSH session. If your connection is unstable,
+> install `screen` on the LXC first, then run setup inside it so it survives disconnects:
+>
+> ```bash
+> # Run deploy.sh steps 1-4 (push files) normally, then:
+> ssh root@<LXC_IP> 'apt-get install -y screen'
+> ssh root@<LXC_IP> 'screen -dmS gitlab-setup bash -c "/tmp/gitlab-setup.sh 2>&1 | tee /root/setup.log"'
+> # Monitor progress:
+> ssh root@<LXC_IP> 'tail -f /root/setup.log'
+> ```
 
 > **Idempotency:** `deploy.sh` and `setup.sh` can be re-run safely. Certbot skips existing certs
 > (`--keep-until-expiring`), `apt-get install` is a no-op if already installed, and UFW silently
@@ -465,8 +476,37 @@ ufw status
 local password login, sign in as `root` with the password from `.env` (or the auto-generated one
 printed during setup).
 
-> **Note:** No SMTP is configured. Password resets and email verification must be done via the
-> Rails console: `gitlab-rails console`
+### Step 7b: Configure SMTP (optional)
+
+Without SMTP, GitLab cannot send notification emails, password resets, or email verifications.
+If you skip this step, those actions must be done via the Rails console.
+
+Append the following to `/etc/gitlab/gitlab.rb` on the LXC (adjust values for your SMTP provider):
+
+```ruby
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "smtp.example.com"
+gitlab_rails['smtp_port'] = 587
+gitlab_rails['smtp_user_name'] = "gitlab@example.com"
+gitlab_rails['smtp_password'] = "<SMTP_PASSWORD>"
+gitlab_rails['smtp_domain'] = "example.com"
+gitlab_rails['smtp_authentication'] = "plain"
+gitlab_rails['smtp_enable_starttls_auto'] = true
+
+gitlab_rails['gitlab_email_from'] = "gitlab@example.com"
+gitlab_rails['gitlab_email_reply_to'] = "gitlab@example.com"
+gitlab_rails['gitlab_email_display_name'] = "GitLab"
+```
+
+Then reconfigure and send a test email:
+
+```bash
+gitlab-ctl reconfigure
+gitlab-rails runner "Notify.test_email('you@example.com', 'GitLab SMTP Test', 'It works.').deliver_now"
+```
+
+> See [GitLab SMTP docs](https://docs.gitlab.com/omnibus/settings/smtp.html) for provider-specific
+> examples (Gmail, SendGrid, Amazon SES, etc.).
 
 ### Step 8: Lock Down to SSO-Only (optional)
 
@@ -532,6 +572,9 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh --dry-run'
 # Then for real
 ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 ```
+
+> **Tip:** The runner script loads Rails (~45s) to create an auth token. If your SSH connection
+> is flaky, run it inside `screen` as shown in [Step 3](#step-3-deploy-gitlab).
 
 **What happens:**
 
