@@ -10,44 +10,6 @@ stages:
   - lint
   - deploy
 
-# ─── ShellCheck ─────────────────────────────────────────────────────────────
-# Lint all shell scripts with shellcheck. Fails on any warning or error.
-shellcheck:
-  stage: lint
-  script:
-    - printf "ShellCheck %s\n" "$(shellcheck --version | grep '^version:' | cut -d' ' -f2)"
-    - |
-      SCRIPTS=$(find . -name '*.sh' -o -name 'detect-secrets' \
-        -o -name 'enforce-branch-naming' -o -name 'block-file-extensions' \
-        -o -name 'enforce-commit-message' | grep -v node_modules | grep -v .git | sort)
-      COUNT=0
-      FAIL=0
-      for f in $SCRIPTS; do
-        COUNT=$((COUNT + 1))
-        if shellcheck "$f"; then
-          printf "  ✓ %s\n" "$f"
-        else
-          printf "  ✗ %s\n" "$f"
-          FAIL=1
-        fi
-      done
-      if [ "$FAIL" -eq 1 ]; then
-        printf "\nShellCheck found issues in one or more scripts.\n"
-        exit 1
-      fi
-      printf "\nAll %s scripts passed.\n" "$COUNT"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-# ─── GitHub Mirror ──────────────────────────────────────────────────────────
-# Push main branch to GitHub after successful lint.
-# Requires gitlab_self_hosted_mirror CI/CD variable (fine-grained PAT, masked + protected).
-mirror-github:
-  stage: deploy
-  variables:
-    GIT_DEPTH: 0
-  script:
-    - git push --force "https://${gitlab_self_hosted_mirror}@github.com/FlarelyLegal/cf-gitlab.git" HEAD:main
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+include:
+  - local: .gitlab/ci/lint.yml
+  - local: .gitlab/ci/deploy.yml

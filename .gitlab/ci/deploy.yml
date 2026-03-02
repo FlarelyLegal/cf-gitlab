@@ -1,0 +1,11 @@
+# ─── GitHub Mirror ──────────────────────────────────────────────────────────
+# Push main branch to GitHub after successful lint.
+# Requires gitlab_self_hosted_mirror CI/CD variable (fine-grained PAT, masked + protected).
+mirror-github:
+  stage: deploy
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - git push --force "https://${gitlab_self_hosted_mirror}@github.com/FlarelyLegal/cf-gitlab.git" HEAD:main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
