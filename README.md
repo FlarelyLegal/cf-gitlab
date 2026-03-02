@@ -1,9 +1,15 @@
 # Self-Hosted GitLab with Cloudflare
 
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/)
-[![Cloudflare Workers](https://img.shields.io/badge/Workers-F38020?logo=cloudflareworkers&logoColor=white)](https://developers.cloudflare.com/workers/)
-[![Cloudflare R2](https://img.shields.io/badge/R2-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/r2/)
 [![Zero Trust](https://img.shields.io/badge/Zero%20Trust-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/)
+[![Tunnel](https://img.shields.io/badge/Tunnel-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+[![Access](https://img.shields.io/badge/Access-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/policies/access/)
+[![Workers](https://img.shields.io/badge/Workers-F38020?logo=cloudflareworkers&logoColor=white)](https://developers.cloudflare.com/workers/)
+[![Workers VPC](https://img.shields.io/badge/Workers%20VPC-F38020?logo=cloudflareworkers&logoColor=white)](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/private-net/cloudflared/tunnel-virtual-networks/)
+[![R2](https://img.shields.io/badge/R2-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/r2/)
+[![WAF](https://img.shields.io/badge/WAF-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/waf/)
+[![DNS](https://img.shields.io/badge/DNS-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/dns/)
+[![NTS](https://img.shields.io/badge/NTS-F38020?logo=cloudflare&logoColor=white)](https://developers.cloudflare.com/time-services/)
+
 [![GitLab CE](https://img.shields.io/badge/GitLab%20CE-FC6D26?logo=gitlab&logoColor=white)](https://about.gitlab.com/)
 [![Debian 13](https://img.shields.io/badge/Debian%2013-A81D33?logo=debian&logoColor=white)](https://www.debian.org/)
 [![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
@@ -106,13 +112,32 @@ You can use a single token with all permissions, or separate tokens for least-pr
 
 - **Zone → DNS → Edit** — required. Used by Certbot on the LXC for DNS-01 challenges.
   This is the only permission sent to the LXC (via `cloudflare.ini`).
-- **Zone → WAF → Edit** — optional. Used locally by `cloudflare/waf-rules.sh`.
-- **Zone → Cache Rules → Edit** — optional. Used locally by `cloudflare/cache-rules.sh`.
+- **Zone → WAF → Edit** — optional. Used locally by `cloudflare/waf/waf-rules.sh`.
+- **Zone → Cache Rules → Edit** — optional. Used locally by `cloudflare/waf/cache-rules.sh`.
 
-> All scripts that call the Cloudflare API (`validate.sh`, `cloudflare/waf-rules.sh`, `cloudflare/cache-rules.sh`,
-> `cloudflare/ratelimit-rules.sh`) run **locally** and require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` +
+> All scripts that call the Cloudflare API (`validate.sh`, `cloudflare/waf/waf-rules.sh`, `cloudflare/waf/cache-rules.sh`,
+> `cloudflare/waf/ratelimit-rules.sh`) run **locally** and require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` +
 > `CLOUDFLARE_ACCOUNT_ID` in your shell environment (Global API key). These are NOT in `.env`.
 > The LXC only receives a Certbot-scoped `CF_API_TOKEN` — it never has WAF, cache, or R2 permissions.
+
+**Tip (macOS):** Store your Cloudflare credentials in Keychain and reference them from `~/.zshrc`
+so they are never written to disk in plain text:
+
+```bash
+# Add to Keychain (one time)
+security add-generic-password -s "Cloudflare API Key" -a "$USER" -w "your-global-api-key" -U
+security add-generic-password -s "Cloudflare Email" -a "$USER" -w "you@example.com" -U
+security add-generic-password -s "Cloudflare Account ID" -a "My Account" -w "your-account-id" -U
+```
+
+```bash
+# Add to ~/.zshrc
+export CLOUDFLARE_API_KEY=$(security find-generic-password -s "Cloudflare API Key" -w 2>/dev/null)
+export CLOUDFLARE_EMAIL=$(security find-generic-password -s "Cloudflare Email" -w 2>/dev/null)
+export CLOUDFLARE_ACCOUNT_ID=$(security find-generic-password -s "Cloudflare Account ID" -a "My Account" -w 2>/dev/null)
+```
+
+Reload your terminal (`source ~/.zshrc` or open a new tab) after adding the exports.
 
 Also note your **Zone ID** from the zone's Overview page (right sidebar).
 
@@ -530,11 +555,11 @@ entirely and go straight through the Cloudflare Access OIDC flow.
 
 ```bash
 # Copy to LXC and dry-run first
-scp ssonly.sh root@<LXC_IP>:/tmp/
-ssh root@<LXC_IP> 'bash /tmp/ssonly.sh --dry-run'
+scp sso-only.sh root@<LXC_IP>:/tmp/
+ssh root@<LXC_IP> 'bash /tmp/sso-only.sh --dry-run'
 
 # Apply
-ssh root@<LXC_IP> 'bash /tmp/ssonly.sh'
+ssh root@<LXC_IP> 'bash /tmp/sso-only.sh'
 ```
 
 **What changes:**
@@ -551,7 +576,7 @@ upgrades.
 **To revert** (re-enable signup + password login + remove auto sign-in):
 
 ```bash
-ssh root@<LXC_IP> 'bash /tmp/ssonly.sh --revert'
+ssh root@<LXC_IP> 'bash /tmp/sso-only.sh --revert'
 ```
 
 **Bypass auto sign-in** (to reach the manual login page):
@@ -660,8 +685,8 @@ fetching content through the tunnel, and GitLab verifies it before serving the r
 sides must use the same value.
 
 ```bash
-# Generate a random 32-character hex token
-openssl rand -hex 16
+# Generate a random token
+openssl rand -base64 32
 ```
 
 Save the output. You will need it twice: once for the Worker secret and once for GitLab admin.
@@ -687,12 +712,12 @@ Requires `CF_ZONE_ID`, `CDN_DOMAIN`, and `VPC_SERVICE_ID` in `.env`.
 
 ```bash
 # Preview first
-./cloudflare/waf-rules.sh --dry-run
-./cloudflare/cache-rules.sh --dry-run
+./cloudflare/waf/waf-rules.sh --dry-run
+./cloudflare/waf/cache-rules.sh --dry-run
 
 # Then provision
-./cloudflare/waf-rules.sh
-./cloudflare/cache-rules.sh
+./cloudflare/waf/waf-rules.sh
+./cloudflare/waf/cache-rules.sh
 ```
 
 > See [`gitlab-cdn/README.md`](gitlab-cdn/README.md) for full CDN Worker documentation,
@@ -751,7 +776,7 @@ Runs locally. Reads `.env`, validates all variables, tests SSH, then:
 
 1. Creates `/root/.secrets/` on the LXC (mode 700)
 2. Writes `gitlab.env` (deployment variables) and `cloudflare.ini` (API token) to secrets dir
-3. SCPs `setup.sh`, `motd.sh`, `config/banner.txt`, `cloudflare/cloudflare-timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
+3. SCPs `setup.sh`, `motd.sh`, `config/banner.txt`, `cloudflare/timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
 4. Executes `setup.sh` remotely via SSH
 
 ### `ssh-config.sh`
@@ -795,7 +820,7 @@ Runs on the runner LXC (server-side). Installs and registers a GitLab Runner:
 Reads config from `/root/.secrets/runner.env` (pushed by `deploy-runner.sh`). Idempotent:
 skips runner creation if one with the same name already exists.
 
-### `cloudflare/waf-rules.sh`
+### `cloudflare/waf/waf-rules.sh`
 
 Runs locally. Provisions 2 CDN-scoped WAF rules via Cloudflare API:
 
@@ -807,7 +832,7 @@ Runs locally. Provisions 2 CDN-scoped WAF rules via Cloudflare API:
 > Uses **read-merge-write** — preserves non-CDN WAF rules (bots, OCONUS challenges, etc.) in the
 > same phase. Only rules whose expression references `CDN_DOMAIN` are replaced.
 
-### `cloudflare/cache-rules.sh`
+### `cloudflare/waf/cache-rules.sh`
 
 Runs locally. Provisions 2 CDN cache rules via Cloudflare API:
 
@@ -821,7 +846,7 @@ Uses **read-merge-write** to preserve non-CDN cache rules in the same phase (e.g
 Both CDN scripts require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` in your shell environment
 (Global API key).
 
-### `cloudflare/ratelimit-rules.sh`
+### `cloudflare/waf/ratelimit-rules.sh`
 
 Runs locally. **Optional** — provisions a rate limit rule for the GitLab health endpoints via
 Cloudflare API:
@@ -833,8 +858,8 @@ Cloudflare API:
 | `/-/readiness` |               |                              |
 
 ```bash
-./cloudflare/ratelimit-rules.sh --dry-run   # preview
-./cloudflare/ratelimit-rules.sh             # provision
+./cloudflare/waf/ratelimit-rules.sh --dry-run   # preview
+./cloudflare/waf/ratelimit-rules.sh             # provision
 ```
 
 The health endpoints are already protected by Cloudflare's default DDoS mitigation and the tunnel
@@ -879,18 +904,18 @@ The repo uses a modular CI pipeline defined in `.gitlab-ci.yml` with job files u
 All lint jobs run on every push to `main` and on merge request events. The deploy stage runs only
 on `main`.
 
-| Stage   | Job              | What it does                                                      |
-| ------- | ---------------- | ----------------------------------------------------------------- |
-| lint    | shellcheck       | Shell script correctness (all `.sh` files + hook scripts)         |
-| lint    | shfmt            | Shell formatting (`-i 2 -ci -bn`). Excludes `rails-cheatsheet.sh` |
-| lint    | prettier         | Markdown, JSON, TypeScript, and YAML formatting                   |
-| lint    | markdownlint     | Structural Markdown issues (headings, lists, code fences)         |
-| lint    | codespell        | Common typos across all files                                     |
-| lint    | printf-check     | No bare `echo` usage in scripts (heredoc blocks exempt)           |
-| lint    | executable-check | Verify `+x` bit on scripts. Excludes `rails-cheatsheet.sh`        |
-| deploy  | mirror-github    | Force-pushes `main` and tags to GitHub                            |
-| release | release-gitlab   | Creates a GitLab release with notes from git-cliff (tag pushes)   |
-| release | release-github   | Creates a matching GitHub release via REST API (tag pushes)       |
+| Stage   | Job              | What it does                                                    |
+| ------- | ---------------- | --------------------------------------------------------------- |
+| lint    | shellcheck       | Shell script correctness (all `.sh` files + hook scripts)       |
+| lint    | shfmt            | Shell formatting (`-i 2 -ci -bn`)                               |
+| lint    | prettier         | Markdown, JSON, TypeScript, and YAML formatting                 |
+| lint    | markdownlint     | Structural Markdown issues (headings, lists, code fences)       |
+| lint    | codespell        | Common typos across all files                                   |
+| lint    | printf-check     | No bare `echo` usage in scripts (heredoc blocks exempt)         |
+| lint    | executable-check | Verify `+x` bit on scripts                                      |
+| deploy  | mirror-github    | Force-pushes `main` and tags to GitHub                          |
+| release | release-gitlab   | Creates a GitLab release with notes from git-cliff (tag pushes) |
+| release | release-github   | Creates a matching GitHub release via REST API (tag pushes)     |
 
 > Secret detection is handled by the `detect-secrets` pre-receive server hook, which blocks
 > pushes containing leaked credentials before they enter the repo. See

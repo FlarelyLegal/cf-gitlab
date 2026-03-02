@@ -1,4 +1,4 @@
-[← Back to root](../README.md)
+[root](../README.md) / **gitlab-cdn**
 
 # GitLab CDN Worker
 
@@ -64,10 +64,10 @@ The CDN Worker authenticates requests to GitLab using a shared secret token. Bot
 and GitLab must be configured with the same value. Generate a random token:
 
 ```bash
-openssl rand -hex 16
+openssl rand -base64 32
 ```
 
-Save the output (a 32-character hex string). You will use it in step 3 and step 4.
+Save the output. You will use it in step 3 and step 4.
 
 ### 4. Deploy
 
@@ -93,7 +93,7 @@ This tells GitLab to rewrite raw file and archive download URLs to point at the 
 | --------------- | --------------------------------------------------- |
 | `STORAGE_TOKEN` | Shared auth token between GitLab and the CDN Worker |
 
-Generate with `openssl rand -hex 16`. Set on the Worker via `npx wrangler secret put STORAGE_TOKEN`. The same value must be entered in GitLab admin (Step 5 above).
+Generate with `openssl rand -base64 32`. Set on the Worker via `npx wrangler secret put STORAGE_TOKEN`. The same value must be entered in GitLab admin (Step 5 above).
 
 ## Environment Variables
 

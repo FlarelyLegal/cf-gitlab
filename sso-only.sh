@@ -12,9 +12,9 @@ set -euo pipefail
 # Run this AFTER verifying SSO works (Step 6 in the README).
 #
 # Usage:
-#   bash ssonly.sh              # apply changes
-#   bash ssonly.sh --dry-run    # show current state without changes
-#   bash ssonly.sh --revert     # re-enable signup + password login + remove auto sign-in
+#   bash sso-only.sh              # apply changes
+#   bash sso-only.sh --dry-run    # show current state without changes
+#   bash sso-only.sh --revert     # re-enable signup + password login + remove auto sign-in
 #
 # Must be run on the GitLab LXC (requires gitlab-rails + gitlab-ctl).
 # ──────────────────────────────────────────────────────────────────────────────
