@@ -5,10 +5,26 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [v1.0.1] - 2026-03-03
+
+### Changed
+
+- Replace local CI includes with include:project from ci-templates (FLEGAL-53) ([04bb8747](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/04bb87478dfa84909380cb42ae13d5610f6e1541)) - Timothy Schneider
+
+### Documentation
+
+- Add usage note to cliff.toml header (FLEGAL-52) ([e757b71a](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/e757b71a122c31f8cf9e38b772fba176d891eeb4)) - Timothy Schneider
+- Clarify trim comment in cliff.toml (FLEGAL-52) ([04d6bba6](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/04d6bba6fee9377f34759400bb074a03bad92706)) - Timothy Schneider
+
+### Fixed
+
+- Skip snippet repos in enforce-commit-message pre-receive hook (FLEGAL-53) ([221fd615](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/221fd615fd241fbe9f01ad98fc1e7873c50d4093)) - Timothy Schneider
+- Use working directory path for release notes file ([4903bdef](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/4903bdef74dcacff8590344426f6d74c1a40981b)) - Timothy Schneider
 ## [v1.0.0] - 2026-03-02
 
 ### Added
 
+- Add release pipeline with git-cliff changelog generation ([4dea043b](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/4dea043b46ea68e30a411b27dc96ab3cd7dce23c)) - Timothy Schneider
 - Add update-runners.sh orchestrator and extend runner-apps.sh with pip and binary support ([afaaf75e](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/afaaf75e83982ac9e34be6acb27e6f584f4fa5ad)) - Timothy Schneider
 - Add path-based rules and allow_failure for CI lint jobs ([47183420](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/47183420fffccaf342127512d28a75304dbde56f)) - Timothy Schneider
 - Add workflow rules to prevent duplicate pipelines ([37833d87](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/37833d87144f5fc74759976e044d1a200de7291d)) - Timothy Schneider
@@ -48,3 +64,4 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 - Add missing devDependencies to package.json and update runner tool manifest ([2290a894](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/2290a8946b60f32fcc362be2792de8f3d087448f)) - Timothy Schneider
 - Use correct CI variable name for GitHub mirror PAT ([05c7415c](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/05c7415c4804bf92d334e4251bccccf493209731)) - Timothy Schneider
 - Runner token heredoc bug, add SMTP section and screen tips ([56aeea1c](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/56aeea1cba1d8365ae603012186de3446a2f0fc3)) - Timothy Schneider
+
