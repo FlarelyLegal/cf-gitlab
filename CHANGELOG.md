@@ -20,6 +20,7 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 - Skip snippet repos in enforce-commit-message pre-receive hook (FLEGAL-53) ([221fd615](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/221fd615fd241fbe9f01ad98fc1e7873c50d4093)) - Timothy Schneider
 - Use working directory path for release notes file ([4903bdef](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/4903bdef74dcacff8590344426f6d74c1a40981b)) - Timothy Schneider
+
 ## [v1.0.0] - 2026-03-02
 
 ### Added
@@ -64,4 +65,3 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 - Add missing devDependencies to package.json and update runner tool manifest ([2290a894](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/2290a8946b60f32fcc362be2792de8f3d087448f)) - Timothy Schneider
 - Use correct CI variable name for GitHub mirror PAT ([05c7415c](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/05c7415c4804bf92d334e4251bccccf493209731)) - Timothy Schneider
 - Runner token heredoc bug, add SMTP section and screen tips ([56aeea1c](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/56aeea1cba1d8365ae603012186de3446a2f0fc3)) - Timothy Schneider
-

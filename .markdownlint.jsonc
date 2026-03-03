@@ -5,4 +5,8 @@
   "MD041": false,
   // Allow blank lines inside blockquotes (used for multi-paragraph notes)
   "MD028": false,
+  // Allow duplicate headings in different sections (needed for CHANGELOG.md)
+  "MD024": { "siblings_only": true },
+  // Allow multiple blank lines (git-cliff output)
+  "MD012": false,
 }
