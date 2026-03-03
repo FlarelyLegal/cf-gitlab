@@ -1,0 +1,167 @@
+name: Sync GitHub Issues to GitLab
+
+on:
+  issues:
+    types: [opened, closed, reopened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Skip bot comments (prevent loops) and PR comments (only sync issues)
+    if: |
+      (github.event_name == 'issues') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.comment.user.login != 'github-actions[bot]' &&
+       !github.event.issue.pull_request)
+    steps:
+      - name: Sync issue to GitLab
+        env:
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
+          GITLAB_HOST: ${{ secrets.GITLAB_HOST }}
+          EVENT_ACTION: ${{ github.event.action }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GITLAB_API="https://${GITLAB_HOST}/api/v4"
+          GITLAB_PROJECT_ID="1"
+          SEARCH_TITLE="[GitHub #${ISSUE_NUMBER}]"
+
+          # --- helpers ---
+
+          gitlab_api() {
+            local method="$1" endpoint="$2"
+            shift 2
+            curl -fsSL --request "$method" \
+              --header "PRIVATE-TOKEN: ${GITLAB_PAT}" \
+              "${GITLAB_API}/projects/${GITLAB_PROJECT_ID}/${endpoint}" \
+              "$@"
+          }
+
+          find_gitlab_issue() {
+            # Search for the mirrored issue by title prefix
+            local iid
+            iid=$(gitlab_api GET "issues?search=$(printf '%s' "${SEARCH_TITLE}" | jq -sRr @uri)&state=all" \
+              | jq -r --arg prefix "${SEARCH_TITLE}" \
+                '[.[] | select(.title | startswith($prefix))][0].iid // empty')
+            printf '%s' "$iid"
+          }
+
+          # --- event handlers ---
+
+          case "${EVENT_ACTION}" in
+            opened)
+              printf 'Creating GitLab issue for GitHub #%s...\n' "${ISSUE_NUMBER}"
+
+              GITLAB_BODY=$(printf '> Mirrored from [GitHub #%s](%s) by **@%s**\n\n---\n\n%s' \
+                "${ISSUE_NUMBER}" "${ISSUE_URL}" "${ISSUE_AUTHOR}" "${ISSUE_BODY}")
+
+              RESPONSE=$(gitlab_api POST "issues" \
+                --data-urlencode "title=${SEARCH_TITLE} ${ISSUE_TITLE}" \
+                --data-urlencode "description=${GITLAB_BODY}" \
+                --data-urlencode "labels=github")
+
+              GITLAB_IID=$(printf '%s' "$RESPONSE" | jq -r '.iid')
+              GITLAB_URL=$(printf '%s' "$RESPONSE" | jq -r '.web_url')
+
+              printf 'Created GitLab issue #%s: %s\n' "$GITLAB_IID" "$GITLAB_URL"
+
+              # Comment on the GitHub issue with the GitLab link
+              gh issue comment "${ISSUE_NUMBER}" \
+                --repo "${{ github.repository }}" \
+                --body "Mirrored to GitLab as [#${GITLAB_IID}](${GITLAB_URL})"
+              ;;
+
+            closed)
+              GITLAB_IID=$(find_gitlab_issue)
+              if [ -z "$GITLAB_IID" ]; then
+                printf 'No matching GitLab issue found for GitHub #%s, skipping.\n' "${ISSUE_NUMBER}"
+                exit 0
+              fi
+
+              printf 'Closing GitLab issue #%s...\n' "$GITLAB_IID"
+
+              # Add a note before closing
+              gitlab_api POST "issues/${GITLAB_IID}/notes" \
+                --data-urlencode "body=Closed on [GitHub #${ISSUE_NUMBER}](${ISSUE_URL})" > /dev/null
+
+              gitlab_api PUT "issues/${GITLAB_IID}" \
+                --data-urlencode "state_event=close" > /dev/null
+
+              printf 'Closed GitLab issue #%s\n' "$GITLAB_IID"
+              ;;
+
+            reopened)
+              GITLAB_IID=$(find_gitlab_issue)
+              if [ -z "$GITLAB_IID" ]; then
+                printf 'No matching GitLab issue found for GitHub #%s, skipping.\n' "${ISSUE_NUMBER}"
+                exit 0
+              fi
+
+              printf 'Reopening GitLab issue #%s...\n' "$GITLAB_IID"
+
+              gitlab_api POST "issues/${GITLAB_IID}/notes" \
+                --data-urlencode "body=Reopened on [GitHub #${ISSUE_NUMBER}](${ISSUE_URL})" > /dev/null
+
+              gitlab_api PUT "issues/${GITLAB_IID}" \
+                --data-urlencode "state_event=reopen" > /dev/null
+
+              printf 'Reopened GitLab issue #%s\n' "$GITLAB_IID"
+              ;;
+
+            edited)
+              GITLAB_IID=$(find_gitlab_issue)
+              if [ -z "$GITLAB_IID" ]; then
+                printf 'No matching GitLab issue found for GitHub #%s, skipping.\n' "${ISSUE_NUMBER}"
+                exit 0
+              fi
+
+              printf 'Updating GitLab issue #%s...\n' "$GITLAB_IID"
+
+              GITLAB_BODY=$(printf '> Mirrored from [GitHub #%s](%s) by **@%s**\n\n---\n\n%s' \
+                "${ISSUE_NUMBER}" "${ISSUE_URL}" "${ISSUE_AUTHOR}" "${ISSUE_BODY}")
+
+              gitlab_api PUT "issues/${GITLAB_IID}" \
+                --data-urlencode "title=${SEARCH_TITLE} ${ISSUE_TITLE}" \
+                --data-urlencode "description=${GITLAB_BODY}" > /dev/null
+
+              printf 'Updated GitLab issue #%s\n' "$GITLAB_IID"
+              ;;
+
+            created)
+              # issue_comment.created
+              GITLAB_IID=$(find_gitlab_issue)
+              if [ -z "$GITLAB_IID" ]; then
+                printf 'No matching GitLab issue found for GitHub #%s, skipping.\n' "${ISSUE_NUMBER}"
+                exit 0
+              fi
+
+              printf 'Adding comment to GitLab issue #%s...\n' "$GITLAB_IID"
+
+              NOTE_BODY=$(printf '**[@%s](%s) commented on GitHub:**\n\n%s' \
+                "${COMMENT_AUTHOR}" "${COMMENT_URL}" "${COMMENT_BODY}")
+
+              gitlab_api POST "issues/${GITLAB_IID}/notes" \
+                --data-urlencode "body=${NOTE_BODY}" > /dev/null
+
+              printf 'Comment added to GitLab issue #%s\n' "$GITLAB_IID"
+              ;;
+
+            *)
+              printf 'Unhandled event action: %s\n' "${EVENT_ACTION}"
+              ;;
+          esac
