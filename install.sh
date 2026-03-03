@@ -53,7 +53,11 @@ if "$DRY_RUN"; then
   printf "[dry-run] Would copy .env.example to .env\n"
 else
   printf "Cloning %s %s into ./%s...\n" "$DIR" "$TAG" "$DIR"
-  git clone --depth 1 --branch "$TAG" "https://github.com/${REPO}.git" "$DIR" --quiet
+  # Three-step clone: annotated/signed tags cause a noisy warning with
+  # "git clone --branch <tag>", so we clone main, fetch the tag, then checkout.
+  git clone --depth 1 "https://github.com/${REPO}.git" "$DIR" --quiet
+  git -C "$DIR" fetch --depth 1 origin tag "$TAG" --quiet
+  git -c advice.detachedHead=false -C "$DIR" checkout "tags/${TAG}" --quiet
   cp "${DIR}/.env.example" "${DIR}/.env"
   printf "Created .env from .env.example\n"
 fi
