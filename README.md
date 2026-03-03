@@ -966,36 +966,24 @@ Releases are created automatically when a semver tag (`v*.*.*`) is pushed. The r
    Conventional Commit history, then creates a GitLab release via `release-cli`
 3. `release-github` creates a matching release on GitHub via the REST API
 
-Release notes are generated from git history (not from `CHANGELOG.md`), so the changelog file
-does not need to be updated before tagging. However, it is good practice to regenerate it:
+Release notes are generated from git history by [git-cliff](https://git-cliff.org/) at tag time.
+No changelog file is committed to the repo. Release notes live on the
+[GitLab Releases](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/releases) and
+[GitHub Releases](https://github.com/FlarelyLegal/cf-gitlab/releases) pages.
+
+To tag a release after merging to `main`:
 
 ```bash
-# Preview what the next release notes will look like
-npm run changelog:preview
+# Preview what the next version and notes will look like
+git-cliff --bump --unreleased
 
-# Auto-bump version based on commit types (feat=minor, fix=patch) and update CHANGELOG.md
-npm run release
-
-# Or regenerate the full changelog for all tags
-npm run changelog
+# Tag the current main (git-cliff --bump infers the version from commit types)
+git tag -s v1.x.x
+git push origin v1.x.x
 ```
 
-The release workflow:
-
-```bash
-# 1. Ensure all changes are committed and pushed to main
-# 2. Regenerate the changelog with the new version
-npm run release
-# 3. Commit the changelog update
-jj describe -m "docs: update changelog for vX.Y.Z"
-jj new
-# 4. Tag the release
-jj bookmark set main -r @-
-jj tag set vX.Y.Z -r main
-# 5. Push (the tag triggers the release pipeline)
-jj git push --bookmark main
-git push origin vX.Y.Z
-```
+The tag push triggers the release pipeline, which generates notes and creates releases on both
+GitLab and GitHub automatically.
 
 The `cliff.toml` config controls changelog formatting: Keep a Changelog section names,
 Conventional Commit type grouping, author attribution, and commit SHA links to the self-hosted
