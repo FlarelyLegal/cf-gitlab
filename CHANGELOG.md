@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [v1.1.0] - 2026-03-03
+
+### Added
+
+- Add install.sh, make deploy resumable, move scripts to scripts/ ([55ac78d6](https://gitlab.flarelylegal.com/flarely-legal/gitlab-self-hosted/-/commit/55ac78d6bdbd4760e5756edf82f67a3b77dd7b91)) - Timothy Schneider
+
 ## [v1.0.1] - 2026-03-03
 
 ### Changed
