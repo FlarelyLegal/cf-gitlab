@@ -4,8 +4,6 @@
   "description": "Self-Hosted GitLab with Cloudflare deployment scripts",
   "license": "GPL-3.0-only",
   "scripts": {
-    "changelog": "git-cliff -o CHANGELOG.md",
-    "changelog:preview": "git-cliff --unreleased --bump",
-    "release": "git-cliff --bump -o CHANGELOG.md"
+    "changelog:preview": "git-cliff --bump --unreleased"
   }
 }
