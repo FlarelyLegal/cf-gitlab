@@ -2,7 +2,7 @@
 # Enforce printf-only rule: no bare echo usage in shell scripts.
 # Allows echo inside heredoc blocks (cat <<) that write standalone scripts.
 printf-check:
-  stage: lint
+  stage: lint-fast
   script:
     - |
       SCRIPTS=$(find . -name '*.sh' -o -name 'detect-secrets' \

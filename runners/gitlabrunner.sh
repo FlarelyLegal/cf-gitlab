@@ -14,7 +14,7 @@ trap 'rm -f /tmp/create-runner.rb /tmp/runner-output.txt /tmp/runner-repo.sh 2>/
 
 # ─── Load config ──────────────────────────────────────────────────────────────
 if [[ ! -f /root/.secrets/gitlab.env ]]; then
-  printf '%s\n' "✗ Missing /root/.secrets/gitlab.env — run deploy.sh first."
+  printf '%s\n' "✗ Missing /root/.secrets/gitlab.env. Run scripts/deploy.sh first."
   exit 1
 fi
 set -a

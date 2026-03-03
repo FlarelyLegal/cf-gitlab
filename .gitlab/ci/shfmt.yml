@@ -2,7 +2,7 @@
 # Check shell script formatting. Fails if any file does not match shfmt style.
 # Options: -i 2 (indent 2), -ci (indent switch cases), -bn (binary ops start lines).
 shfmt:
-  stage: lint
+  stage: lint-fast
   script:
     - printf "shfmt %s\n" "$(shfmt --version)"
     - |
