@@ -1,7 +1,7 @@
 # ─── Executable Check ───────────────────────────────────────────────────────
 # Verify all .sh files and hook scripts have the executable bit set.
 executable-check:
-  stage: lint
+  stage: lint-fast
   script:
     - |
       FAIL=0

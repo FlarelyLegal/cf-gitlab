@@ -15,6 +15,22 @@
 [![Shell](https://img.shields.io/badge/Shell-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](LICENSE)
 
+## Quick Start
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FlarelyLegal/cf-gitlab/main/install.sh | bash
+```
+
+Or clone manually:
+
+```bash
+git clone https://github.com/FlarelyLegal/cf-gitlab.git
+cd cf-gitlab
+cp .env.example .env
+```
+
+---
+
 Deploys a fully configured GitLab CE instance on a Debian 13 LXC with:
 
 - Let's Encrypt TLS via Certbot (Cloudflare DNS-01, auto-renewing) for GitLab, Container Registry, and Pages
@@ -28,7 +44,7 @@ Deploys a fully configured GitLab CE instance on a Debian 13 LXC with:
 - CDN WAF + cache rule provisioning via Cloudflare API
 
 All deployment scripts support `--dry-run` to preview changes without modifying anything.
-`validate.sh` is read-only by design and does not need `--dry-run`.
+`scripts/validate.sh` is read-only by design and does not need `--dry-run`.
 
 ---
 
@@ -115,7 +131,7 @@ You can use a single token with all permissions, or separate tokens for least-pr
 - **Zone → WAF → Edit** — optional. Used locally by `cloudflare/waf/waf-rules.sh`.
 - **Zone → Cache Rules → Edit** — optional. Used locally by `cloudflare/waf/cache-rules.sh`.
 
-> All scripts that call the Cloudflare API (`validate.sh`, `cloudflare/waf/waf-rules.sh`, `cloudflare/waf/cache-rules.sh`,
+> All scripts that call the Cloudflare API (`scripts/validate.sh`, `cloudflare/waf/waf-rules.sh`, `cloudflare/waf/cache-rules.sh`,
 > `cloudflare/waf/ratelimit-rules.sh`) run **locally** and require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` +
 > `CLOUDFLARE_ACCOUNT_ID` in your shell environment (Global API key). These are NOT in `.env`.
 > The LXC only receives a Certbot-scoped `CF_API_TOKEN` — it never has WAF, cache, or R2 permissions.
@@ -327,7 +343,7 @@ cp .env.example .env
 Every script supports `--dry-run`. Use it to verify configuration before making changes.
 
 ```bash
-./deploy.sh --dry-run
+scripts/deploy.sh --dry-run
 ```
 
 This will:
@@ -377,30 +393,30 @@ Example output:
 ### Step 3: Deploy GitLab
 
 ```bash
-./deploy.sh
+scripts/deploy.sh
 ```
 
-This pushes secrets and scripts to the LXC, then executes `setup.sh` remotely. Takes ~10-15 minutes
+This pushes secrets and scripts to the LXC, then executes `scripts/setup.sh` remotely. Takes ~10-15 minutes
 (most of the time is GitLab CE package installation and initial reconfigure).
 
-> **Tip:** The remote `setup.sh` execution is a long SSH session. If your connection is unstable,
+> **Tip:** The remote `scripts/setup.sh` execution is a long SSH session. If your connection is unstable,
 > install `screen` on the LXC first, then run setup inside it so it survives disconnects:
 >
 > ```bash
-> # Run deploy.sh steps 1-4 (push files) normally, then:
+> # Run scripts/deploy.sh steps 1-4 (push files) normally, then:
 > ssh root@<LXC_IP> 'apt-get install -y screen'
 > ssh root@<LXC_IP> 'screen -dmS gitlab-setup bash -c "/tmp/gitlab-setup.sh 2>&1 | tee /root/setup.log"'
 > # Monitor progress:
 > ssh root@<LXC_IP> 'tail -f /root/setup.log'
 > ```
 
-> **Idempotency:** `deploy.sh` and `setup.sh` can be re-run safely. Certbot skips existing certs
+> **Idempotency:** `scripts/deploy.sh` and `scripts/setup.sh` can be re-run safely. Certbot skips existing certs
 > (`--keep-until-expiring`), `apt-get install` is a no-op if already installed, and UFW silently
 > ignores duplicate rules. Note that `/etc/gitlab/gitlab.rb` will be overwritten on each run.
 
-**What happens on the LXC (`setup.sh`):**
+**What happens on the LXC (`scripts/setup.sh`):**
 
-1. Sets MOTD via `motd.sh`
+1. Sets MOTD via `scripts/motd.sh`
 2. Configures Cloudflare NTS time sync (chrony)
 3. Installs packages (ufw, curl, certbot) + enables UFW (default deny, 80, 443, SSH from `SSH_ALLOW_CIDR`)
 4. Obtains TLS certs via Certbot + Cloudflare DNS-01 for all 3 domains (+wildcard for pages)
@@ -436,10 +452,10 @@ Set up client-side SSH through the tunnel for Git operations and admin access:
 
 ```bash
 # Preview what will be added
-./ssh-config.sh --dry-run
+scripts/ssh-config.sh --dry-run
 
 # Configure ~/.ssh/config + known_hosts
-./ssh-config.sh
+scripts/ssh-config.sh
 ```
 
 This adds two entries to `~/.ssh/config`:
@@ -463,7 +479,7 @@ Run the validation script to confirm the full deployment is healthy. This is rea
 does not make any changes.
 
 ```bash
-./validate.sh
+scripts/validate.sh
 ```
 
 Checks performed:
@@ -555,7 +571,7 @@ entirely and go straight through the Cloudflare Access OIDC flow.
 
 ```bash
 # Copy to LXC and dry-run first
-scp sso-only.sh root@<LXC_IP>:/tmp/
+scp scripts/sso-only.sh root@<LXC_IP>:/tmp/
 ssh root@<LXC_IP> 'bash /tmp/sso-only.sh --dry-run'
 
 # Apply
@@ -597,7 +613,7 @@ gitlab-ctl reconfigure
 
 ### Step 9: Install GitLab Runner (optional)
 
-The runner script is not run by `deploy.sh` — it's a separate step. The secrets file
+The runner script is not run by `scripts/deploy.sh`, it's a separate step. The secrets file
 (`/root/.secrets/gitlab.env`) must already exist on the LXC from Step 3.
 
 ```bash
@@ -757,7 +773,7 @@ Validate with `gitlab-rake file_hooks:validate` on the LXC.
 
 ## Script Details
 
-### `validate.sh`
+### `scripts/validate.sh`
 
 Runs locally. Read-only check of the full deployment environment:
 
@@ -770,16 +786,16 @@ Runs locally. Read-only check of the full deployment environment:
 7. OIDC issuer `.well-known/openid-configuration` responds
 8. GitLab health endpoint reachable via HTTPS (tunnel check)
 
-### `deploy.sh`
+### `scripts/deploy.sh`
 
 Runs locally. Reads `.env`, validates all variables, tests SSH, then:
 
 1. Creates `/root/.secrets/` on the LXC (mode 700)
 2. Writes `gitlab.env` (deployment variables) and `cloudflare.ini` (API token) to secrets dir
-3. SCPs `setup.sh`, `motd.sh`, `config/banner.txt`, `cloudflare/timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
-4. Executes `setup.sh` remotely via SSH
+3. SCPs `scripts/setup.sh`, `scripts/motd.sh`, `config/banner.txt`, `cloudflare/timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
+4. Executes `scripts/setup.sh` remotely via SSH
 
-### `ssh-config.sh`
+### `scripts/ssh-config.sh`
 
 Runs locally. Configures `~/.ssh/config` and `~/.ssh/known_hosts` for accessing GitLab
 through the Cloudflare Tunnel using client-side `cloudflared`:
@@ -870,13 +886,13 @@ well under the limit).
 Uses **read-merge-write** to preserve non-health rate limit rules in the same phase.
 
 > Health endpoints require `gitlab_rails['monitoring_whitelist'] = ['0.0.0.0/0', '::/0']` in
-> `gitlab.rb` (configured by `setup.sh`) to allow checks from any source IP through the tunnel.
+> `gitlab.rb` (configured by `scripts/setup.sh`) to allow checks from any source IP through the tunnel.
 > Without this, GitLab rejects health checks when `X-Forwarded-For` contains a non-local IP.
 
 ### `gitlab-cdn/`
 
 Cloudflare Worker that caches public GitLab static objects at the edge. Deployed separately
-via `wrangler deploy` (not part of `deploy.sh`). Run `generate-wrangler.sh` first to create
+via `wrangler deploy` (not part of `scripts/deploy.sh`). Run `generate-wrangler.sh` first to create
 `wrangler.jsonc` from `.env` values. See [`gitlab-cdn/README.md`](gitlab-cdn/README.md)
 for full documentation.
 
@@ -1015,7 +1031,7 @@ local push → self-hosted GitLab (origin)
 
 ## Backups
 
-A daily cron job (`/usr/local/bin/gitlab-backup-all`, installed by `setup.sh`) runs at 2am and:
+A daily cron job (`/usr/local/bin/gitlab-backup-all`, installed by `scripts/setup.sh`) runs at 2am and:
 
 1. **Creates a GitLab backup** (`gitlab-backup create`) — dumps the PostgreSQL database and
    Git repositories into a `.tar` archive
@@ -1175,7 +1191,7 @@ For workloads that need Docker or full network isolation, use a dedicated runner
 the co-located shell executor. Two scripts handle this:
 
 - **`runners/deploy-runner.sh`** runs locally, pushes config and scripts to the runner LXC, then
-  executes the setup remotely (same pattern as `deploy.sh` for the GitLab LXC).
+  executes the setup remotely (same pattern as `scripts/deploy.sh` for the GitLab LXC).
 - **`runners/external-runner.sh`** runs on the runner LXC itself, installs and registers the
   runner via the GitLab API, configures UFW, and installs CI tools from `runner-apps.json`.
 

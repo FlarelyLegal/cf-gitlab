@@ -13,4 +13,4 @@ Scripts for installing and registering GitLab Runners (co-located or external).
 | `runner-apps.json`   | -             | Tool manifest (apt packages, Docker, Node.js, npm globals)        |
 | `update-runners.sh`  | Local machine | Pushes `runner-apps.json` + `runner-apps.sh` to all runner hosts  |
 
-All scripts support `--dry-run`. The co-located runner reads from `/root/.secrets/gitlab.env` (created by `deploy.sh`). The external runner reads from `/root/.secrets/runner.env` (created by `deploy-runner.sh`).
+All scripts support `--dry-run`. The co-located runner reads from `/root/.secrets/gitlab.env` (created by `scripts/deploy.sh`). The external runner reads from `/root/.secrets/runner.env` (created by `deploy-runner.sh`).

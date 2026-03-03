@@ -3,8 +3,38 @@ set -euo pipefail
 
 # ─── Flags ────────────────────────────────────────────────────────────────────
 DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-  DRY_RUN=true
+FROM_STEP=0
+SETUP_EXTRA_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=true
+      SETUP_EXTRA_ARGS+=(--dry-run)
+      shift
+      ;;
+    --from-step)
+      FROM_STEP="${2:-}"
+      if [[ -z "${FROM_STEP}" ]] || ! [[ "${FROM_STEP}" =~ ^[0-9]+$ ]] \
+        || [[ "${FROM_STEP}" -lt 1 ]] || [[ "${FROM_STEP}" -gt 11 ]]; then
+        printf 'Error: --from-step requires a number between 1 and 11.\n' >&2
+        exit 1
+      fi
+      SETUP_EXTRA_ARGS+=(--from-step "${FROM_STEP}")
+      shift 2
+      ;;
+    --reset)
+      SETUP_EXTRA_ARGS+=(--reset)
+      shift
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if ${DRY_RUN}; then
   printf '%s\n' "── DRY RUN (no changes will be made) ──"
   printf '\n'
 fi
@@ -12,15 +42,16 @@ fi
 # ─── Error handling ───────────────────────────────────────────────────────────
 trap 'printf "\n"; printf "%s\n" "✗ Deploy failed at line ${LINENO}. Check output above for details."' ERR
 
-# SSH/SCP options — prevent hangs on dropped connections
+# SSH/SCP options: prevent hangs on dropped connections
 SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -o BatchMode=yes)
 
 # ─── Resolve paths relative to this script ────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
-  printf '%s\n' "✗ Missing ${ENV_FILE} — copy .env.example and fill in real values."
+  printf '%s\n' "✗ Missing ${ENV_FILE}. Copy .env.example and fill in real values."
   exit 1
 fi
 
@@ -44,14 +75,14 @@ done
 # Warn about optional CDN variables (needed by cloudflare/ scripts, not by deploy)
 for var in CF_ZONE_ID CDN_DOMAIN; do
   if [[ -z "${!var:-}" ]]; then
-    printf '%s\n' "⚠ ${var} not set — cloudflare/waf/waf-rules.sh and cloudflare/waf/cache-rules.sh will not work without it"
+    printf '%s\n' "⚠ ${var} not set. cloudflare/waf/waf-rules.sh and cloudflare/waf/cache-rules.sh will not work without it."
   fi
 done
 
 printf '%s\n' "── Deploying GitLab setup to ${LXC_HOST} ──"
 printf '\n'
 
-# ─── 1. Test SSH ──────────────────────────────────────────────────────────────
+# ─── 1. Test SSH ──��───────────────────────────────────────────────────────────
 printf '%s\n' "→ Testing SSH connection..."
 if ! ssh -o ConnectTimeout=5 "${LXC_HOST}" 'true' 2>/dev/null; then
   printf '%s\n' "✗ Cannot reach ${LXC_HOST} via SSH. Is the LXC running?"
@@ -60,9 +91,11 @@ fi
 printf '%s\n' "✓ SSH connected"
 
 # ─── 2. Verify local files exist ─────────────────────────────────────────────
-for f in setup.sh motd.sh config/banner.txt cloudflare/timing.sh config/chrony.conf; do
-  if [[ ! -f "${SCRIPT_DIR}/${f}" ]]; then
-    printf '%s\n' "✗ Missing ${SCRIPT_DIR}/${f}"
+for f in "${SCRIPT_DIR}/setup.sh" "${SCRIPT_DIR}/motd.sh" \
+  "${REPO_ROOT}/config/banner.txt" "${REPO_ROOT}/cloudflare/timing.sh" \
+  "${REPO_ROOT}/config/chrony.conf"; do
+  if [[ ! -f "${f}" ]]; then
+    printf '%s\n' "✗ Missing ${f}"
     exit 1
   fi
 done
@@ -77,7 +110,7 @@ if ${DRY_RUN}; then
   printf '%s\n' "  Pages:          ${PAGES_DOMAIN}"
   printf '%s\n' "  Root email:     ${GITLAB_ROOT_EMAIL}"
   printf '%s\n' "  Cert email:     ${CERT_EMAIL}"
-  printf '%s\n' "  Org:            ${ORG_NAME} — ${ORG_URL}"
+  printf '%s\n' "  Org:            ${ORG_NAME} / ${ORG_URL}"
   printf '%s\n' "  SSH allow:      ${SSH_ALLOW_CIDR}"
   printf '%s\n' "  Internal DNS:   ${INTERNAL_DNS}"
   printf '%s\n' "  CF API token:   ${CF_API_TOKEN:0:8}...(redacted)"
@@ -87,6 +120,9 @@ if ${DRY_RUN}; then
   printf '%s\n' "  Backup bucket:  ${R2_BACKUP_BUCKET:-${R2_BUCKET_PREFIX}-backups}"
   printf '%s\n' "  Runner:         ${RUNNER_NAME} (${RUNNER_TAGS})"
   printf '%s\n' "  Password:       $(printf '*%.0s' $(seq 1 ${#GITLAB_ROOT_PASSWORD}))"
+  if [[ "${FROM_STEP}" -gt 0 ]]; then
+    printf '%s\n' "  Resume from:    step ${FROM_STEP}"
+  fi
   printf '\n'
   printf '%s\n' "  Would deploy:"
   printf '%s\n' "    /root/.secrets/gitlab.env"
@@ -151,9 +187,9 @@ printf '%s\n' "✓ Secrets deployed"
 printf '%s\n' "→ Copying scripts to LXC..."
 scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/setup.sh" "${LXC_HOST}:/tmp/gitlab-setup.sh"
 scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/motd.sh" "${LXC_HOST}:/tmp/gitlab-motd.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/banner.txt" "${LXC_HOST}:/tmp/gitlab-banner.txt"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/cloudflare/timing.sh" "${LXC_HOST}:/tmp/gitlab-timing.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/config/chrony.conf" "${LXC_HOST}:/tmp/gitlab-chrony.conf"
+scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/banner.txt" "${LXC_HOST}:/tmp/gitlab-banner.txt"
+scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/cloudflare/timing.sh" "${LXC_HOST}:/tmp/gitlab-timing.sh"
+scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/chrony.conf" "${LXC_HOST}:/tmp/gitlab-chrony.conf"
 ssh "${SSH_OPTS[@]}" "${LXC_HOST}" 'chmod +x /tmp/gitlab-setup.sh /tmp/gitlab-motd.sh /tmp/gitlab-timing.sh'
 printf '%s\n' "✓ Scripts copied"
 
@@ -161,11 +197,14 @@ printf '%s\n' "✓ Scripts copied"
 printf '\n'
 printf '%s\n' "── Running setup on LXC ──"
 printf '\n'
-if ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "${LXC_HOST}" '/tmp/gitlab-setup.sh'; then
+if ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "${LXC_HOST}" \
+  "/tmp/gitlab-setup.sh ${SETUP_EXTRA_ARGS[*]:-}"; then
   printf '\n'
   printf '%s\n' "✓ Deploy complete!"
 else
   printf '\n'
-  printf '%s\n' "✗ Setup script failed on the LXC. SSH in and check: ssh ${LXC_HOST}"
+  printf '%s\n' "✗ Setup script failed on the LXC."
+  printf '%s\n' "  Check the output above for the step number, then retry with:"
+  printf '%s\n' "  scripts/deploy.sh --from-step <N>"
   exit 1
 fi

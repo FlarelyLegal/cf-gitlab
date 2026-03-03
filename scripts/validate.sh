@@ -6,7 +6,7 @@ set -euo pipefail
 # connectivity, Cloudflare DNS/R2/OIDC resources. Read-only, no changes made.
 #
 # Usage:
-#   ./validate.sh
+#   scripts/validate.sh
 #
 # Checks:
 #   1. Local: .env exists, all required variables set, no placeholders
@@ -52,7 +52,8 @@ fail() {
 
 # ─── Resolve paths ───────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/.env"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${REPO_ROOT}/.env"
 
 printf '%s\n' "── Validate GitLab Setup ──"
 printf '\n'
@@ -153,12 +154,19 @@ printf '\n'
 # ═══════════════════════════════════════════════════════════════════════════════
 printf '%s\n' "── 3. Local Files ──"
 
-LOCAL_FILES=(setup.sh motd.sh config/banner.txt cloudflare/timing.sh config/chrony.conf)
+LOCAL_FILES=(
+  "${SCRIPT_DIR}/setup.sh"
+  "${SCRIPT_DIR}/motd.sh"
+  "${REPO_ROOT}/config/banner.txt"
+  "${REPO_ROOT}/cloudflare/timing.sh"
+  "${REPO_ROOT}/config/chrony.conf"
+)
 for f in "${LOCAL_FILES[@]}"; do
-  if [[ -f "${SCRIPT_DIR}/${f}" ]]; then
-    pass "${f}"
+  label="${f#"${REPO_ROOT}"/}"
+  if [[ -f "${f}" ]]; then
+    pass "${label}"
   else
-    fail "${f} missing"
+    fail "${label} missing"
   fi
 done
 printf '\n'

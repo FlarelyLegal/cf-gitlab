@@ -12,7 +12,7 @@ trap 'printf "\n"; printf "%s\n" "✗ MOTD setup failed at line ${LINENO}."' ERR
 
 # ─── Load config ──────────────────────────────────────────────────────────────
 if [[ ! -f /root/.secrets/gitlab.env ]]; then
-  printf '%s\n' "✗ Missing /root/.secrets/gitlab.env — run deploy.sh first."
+  printf '%s\n' "✗ Missing /root/.secrets/gitlab.env. Run scripts/deploy.sh first."
   exit 1
 fi
 set -a

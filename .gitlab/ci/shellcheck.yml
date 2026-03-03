@@ -1,7 +1,7 @@
 # ─── ShellCheck ─────────────────────────────────────────────────────────────
 # Lint all shell scripts with shellcheck. Fails on any warning or error.
 shellcheck:
-  stage: lint
+  stage: lint-fast
   script:
     - printf "ShellCheck %s\n" "$(shellcheck --version | grep '^version:' | cut -d' ' -f2)"
     - |
