@@ -1242,6 +1242,14 @@ handles bulk installation from `runner-apps.json`, but tools installed manually 
 
 ---
 
+## Issues
+
+Open issues on [GitHub](https://github.com/FlarelyLegal/cf-gitlab/issues).
+They are automatically mirrored to the self-hosted GitLab instance via a
+[GitHub Actions workflow](.github/workflows/sync-issues.yml).
+
+---
+
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
