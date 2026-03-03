@@ -5,7 +5,7 @@ executable-check:
   script:
     - |
       FAIL=0
-      FILES=$(find . -name '*.sh' -not -name 'rails-cheatsheet.sh' \
+      FILES=$(find . -name '*.sh' \
         -not -path '*/node_modules/*' -not -path '*/.git/*' | sort)
       HOOKS="./optional/detect-secrets ./optional/enforce-branch-naming \
         ./optional/block-file-extensions ./optional/enforce-commit-message"

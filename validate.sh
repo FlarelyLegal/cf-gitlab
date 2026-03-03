@@ -113,7 +113,7 @@ fi
 # Optional vars — Cloudflare API scripts
 for var in CF_ZONE_ID CDN_DOMAIN; do
   if [[ -z "${!var:-}" ]]; then
-    warn "${var} not set (needed for cloudflare/waf-rules.sh / cloudflare/cache-rules.sh)"
+    warn "${var} not set (needed for cloudflare/waf/waf-rules.sh / cloudflare/waf/cache-rules.sh)"
   else
     pass "${var} set"
   fi
@@ -153,7 +153,7 @@ printf '\n'
 # ═══════════════════════════════════════════════════════════════════════════════
 printf '%s\n' "── 3. Local Files ──"
 
-LOCAL_FILES=(setup.sh motd.sh config/banner.txt cloudflare/cloudflare-timing.sh config/chrony.conf)
+LOCAL_FILES=(setup.sh motd.sh config/banner.txt cloudflare/timing.sh config/chrony.conf)
 for f in "${LOCAL_FILES[@]}"; do
   if [[ -f "${SCRIPT_DIR}/${f}" ]]; then
     pass "${f}"

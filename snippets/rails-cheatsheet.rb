@@ -1,6 +1,5 @@
-# shellcheck disable=all
 # ─── GitLab Rails Console Cheatsheet ─────────────────────────────
-# This file contains Ruby snippets (not shell) — run via:
+# Ruby snippets for GitLab administration. Run via:
 #   gitlab-rails runner <script.rb>
 #   gitlab-rails console
 
