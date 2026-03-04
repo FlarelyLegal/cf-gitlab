@@ -21,9 +21,18 @@
       { "name": "shellcheck", "description": "Shell script linter" },
       { "name": "python3", "description": "Python runtime" },
       { "name": "python3-pip", "description": "Python package manager" },
+      { "name": "python3-dev", "description": "Python C extension headers" },
+      {
+        "name": "python3-yaml",
+        "description": "YAML parsing for scripts (sync-certs, etc.)"
+      },
       { "name": "rsync", "description": "File sync for deployments" },
       { "name": "tree", "description": "Directory listing for debug output" },
-      { "name": "htop", "description": "System monitoring" }
+      { "name": "htop", "description": "System monitoring" },
+      {
+        "name": "screen",
+        "description": "Terminal multiplexer for background tasks"
+      }
     ]
   },
 
@@ -60,9 +69,14 @@
       { "name": "prettier", "description": "Code formatter" },
       { "name": "eslint", "description": "JavaScript/TypeScript linter" },
       { "name": "@eslint/js", "description": "ESLint core JS config" },
+      { "name": "markdownlint-cli", "description": "Markdown linter CLI" },
       {
         "name": "markdownlint-cli2",
         "description": "Structural Markdown linter"
+      },
+      {
+        "name": "markdownlint-cli2-formatter-junit",
+        "description": "JUnit report formatter for markdownlint-cli2"
       },
       { "name": "jsonlint-cli", "description": "JSON linter/validator" },
       {
@@ -75,7 +89,11 @@
   "pip": {
     "description": "Python packages installed via pip3.",
     "packages": [
-      { "name": "codespell", "description": "Typo detection for code and docs" }
+      {
+        "name": "codespell",
+        "description": "Typo detection for code and docs"
+      },
+      { "name": "PyYAML", "description": "YAML parser for Python scripts" }
     ]
   },
 
