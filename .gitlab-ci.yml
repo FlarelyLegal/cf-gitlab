@@ -20,6 +20,7 @@ workflow:
 stages:
   - lint-fast
   - lint
+  - test
   - deploy
   - release
 
@@ -36,3 +37,17 @@ include:
       - "/executable-check.yml"
       - "/deploy.yml"
       - "/release.yml"
+
+# ─── Unit Tests ──────────────────────────────────────────────────────────────
+
+cdn:test:
+  stage: test
+  tags: [linux, x64]
+  script:
+    - cd gitlab-cdn
+    - npm ci --prefer-offline
+    - npm run test:ci
+  artifacts:
+    when: always
+    reports:
+      junit: junit-cdn.xml

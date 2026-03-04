@@ -26,14 +26,14 @@ export interface Env {
   CACHE_PRIVATE_OBJECTS?: string;
 }
 
-const CORS_HEADERS: Record<string, string> = {
+export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
   "Access-Control-Allow-Headers": "X-Csrf-Token, X-Requested-With",
 };
 
 /** Only proxy raw file downloads and archive downloads */
-const VALID_PATH = /^(.+)(\/raw\/|\/-\/archive\/)/;
+export const VALID_PATH = /^(.+)(\/raw\/|\/-\/archive\/)/;
 
 export default {
   async fetch(
@@ -64,7 +64,7 @@ export default {
   },
 };
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(
     public status: number,
     message?: string,
@@ -73,7 +73,7 @@ class HttpError extends Error {
   }
 }
 
-async function handleRequest(
+export async function handleRequest(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
@@ -99,7 +99,7 @@ async function handleRequest(
   return proxyToGitLab(request, url, env, ctx);
 }
 
-function handleOptions(request: Request): Response {
+export function handleOptions(request: Request): Response {
   const hasOrigin = request.headers.get("Origin") !== null;
   const hasMethod =
     request.headers.get("Access-Control-Request-Method") !== null;
@@ -115,7 +115,7 @@ function handleOptions(request: Request): Response {
   });
 }
 
-async function proxyToGitLab(
+export async function proxyToGitLab(
   request: Request,
   url: URL,
   env: Env,
@@ -234,7 +234,7 @@ async function proxyToGitLab(
   return originResponse;
 }
 
-async function trackAnalytics(
+export async function trackAnalytics(
   env: Env,
   request: Request,
   response: Response,
@@ -262,7 +262,7 @@ async function trackAnalytics(
 }
 
 /** Strip irrelevant query params to maximize cache hits */
-function normalizeQuery(url: URL): URL {
+export function normalizeQuery(url: URL): URL {
   const searchParams = url.searchParams;
   const clean = new URL(url.toString().split("?")[0]);
 
