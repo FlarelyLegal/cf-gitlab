@@ -237,7 +237,7 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
    hold Git repositories (Gitaly), PostgreSQL, GitLab binaries, and logs. This is what keeps
    the LXC's disk requirements manageable at 50 GB. R2 also has no egress fees, so
    `proxy_download` (GitLab proxies object downloads through itself) costs nothing extra.
-   When paired with the [CDN Worker](#gitlab-cdn), R2 objects served through GitLab are
+   When paired with the [CDN Worker](gitlab-cdn/README.md), R2 objects served through GitLab are
    cached at Cloudflare's edge — so repeat downloads of the same file hit neither
    GitLab nor R2.
 
@@ -769,148 +769,37 @@ ssh root@<LXC_IP> 'chmod +x /opt/gitlab/embedded/service/gitlab-rails/file_hooks
 
 Validate with `gitlab-rake file_hooks:validate` on the LXC.
 
----
+### Step 12: Web IDE Extension Host (optional)
 
-## Script Details
+By default the Web IDE loads VS Code assets from GitLab's CDN (`cdn.web-ide.gitlab-static.net`).
+To serve them from your own instance instead:
 
-### `scripts/validate.sh`
-
-Runs locally. Read-only check of the full deployment environment:
-
-1. `.env` exists, all 24 required variables set, no `<placeholder>` values
-2. SSH connectivity to the LXC (with OS version detection)
-3. All local script files present
-4. Cloudflare API credentials valid (Global API key), zone accessible
-5. DNS records exist for all domains — reports record type and proxy status (warns if DNS-only on tunnel CNAMEs)
-6. All 10 R2 buckets exist (requires `CLOUDFLARE_ACCOUNT_ID` in shell or parseable from `R2_ENDPOINT`)
-7. OIDC issuer `.well-known/openid-configuration` responds
-8. GitLab health endpoint reachable via HTTPS (tunnel check)
-
-### `scripts/deploy.sh`
-
-Runs locally. Reads `.env`, validates all variables, tests SSH, then:
-
-1. Creates `/root/.secrets/` on the LXC (mode 700)
-2. Writes `gitlab.env` (deployment variables) and `cloudflare.ini` (API token) to secrets dir
-3. SCPs `scripts/setup.sh`, `scripts/motd.sh`, `config/banner.txt`, `cloudflare/timing.sh`, `config/chrony.conf` to `/tmp/` on the LXC
-4. Executes `scripts/setup.sh` remotely via SSH
-
-### `scripts/ssh-config.sh`
-
-Runs locally. Configures `~/.ssh/config` and `~/.ssh/known_hosts` for accessing GitLab
-through the Cloudflare Tunnel using client-side `cloudflared`:
-
-1. Adds **git access** entry (`Host <GITLAB_DOMAIN>`) — for `git clone`/`push`/`pull` via tunnel
-2. Adds **admin access** entry (`Host gitlab-lxc`) — for interactive root SSH via tunnel
-3. Scans the server host key from the LXC IP and adds it under the tunnel hostname
-
-All operations are idempotent — existing entries are skipped. Requires `cloudflared` installed
-locally and `GITLAB_DOMAIN` + `LXC_HOST` in `.env`.
-
-### `runners/deploy-runner.sh`
-
-Runs locally. Orchestrates deployment of an external GitLab Runner to a dedicated LXC:
-
-1. Loads `.env` for `GITLAB_DOMAIN`, `ORG_NAME`, `ORG_URL`
-2. Validates SSH connectivity and required local files
-3. Pushes `runner.env` secrets to `/root/.secrets/` on the runner LXC
-4. SCPs `external-runner.sh`, `runner-apps.sh`, `runner-apps.json`, and `banner.txt` to `/tmp/`
-5. Launches `external-runner.sh` in a `screen` session (survives SSH disconnects)
-6. Streams live output back to the terminal and reports the exit code
-
-Requires `RUNNER_LXC_HOST` and `RUNNER_GITLAB_PAT` as environment variables.
-See [External Self-Hosted Runner](#external-self-hosted-runner) for full usage.
-
-### `runners/external-runner.sh`
-
-Runs on the runner LXC (server-side). Installs and registers a GitLab Runner:
-
-1. Sets MOTD with runner info
-2. Configures UFW (default deny, SSH from `SSH_ALLOW_CIDR`)
-3. Installs `gitlab-runner` + helper images from the GitLab APT repository
-4. Creates a runner token via `POST /api/v4/user/runners` (new `glrt-` token flow)
-5. Registers the runner with shell executor
-6. Starts and verifies the runner service
-7. Installs CI tools from `runner-apps.json` via `runner-apps.sh`
-
-Reads config from `/root/.secrets/runner.env` (pushed by `deploy-runner.sh`). Idempotent:
-skips runner creation if one with the same name already exists.
-
-### `cloudflare/waf/waf-rules.sh`
-
-Runs locally. Provisions 2 CDN-scoped WAF rules via Cloudflare API:
-
-| #   | Action | Description                                                            |
-| --- | ------ | ---------------------------------------------------------------------- |
-| 1   | skip   | Allow CDN Worker traffic (GET/HEAD/OPTIONS + `/raw/` or `/-/archive/`) |
-| 2   | block  | Block all other CDN traffic                                            |
-
-> Uses **read-merge-write** — preserves non-CDN WAF rules (bots, OCONUS challenges, etc.) in the
-> same phase. Only rules whose expression references `CDN_DOMAIN` are replaced.
-
-### `cloudflare/waf/cache-rules.sh`
-
-Runs locally. Provisions 2 CDN cache rules via Cloudflare API:
-
-| #   | Action | Description                                            |
-| --- | ------ | ------------------------------------------------------ |
-| 1   | cache  | Public static objects — browser TTL: 1h, edge TTL: 24h |
-| 2   | bypass | Authenticated requests (`?token=` in query string)     |
-
-Uses **read-merge-write** to preserve non-CDN cache rules in the same phase (e.g. Media Bypass).
-
-Both CDN scripts require `CLOUDFLARE_API_KEY` + `CLOUDFLARE_EMAIL` in your shell environment
-(Global API key).
-
-### `cloudflare/waf/ratelimit-rules.sh`
-
-Runs locally. **Optional** — provisions a rate limit rule for the GitLab health endpoints via
-Cloudflare API:
-
-| Path           | Limit         | Action                       |
-| -------------- | ------------- | ---------------------------- |
-| `/-/health`    | 20 req/60s    | Block for 60s when exceeded  |
-| `/-/liveness`  | per IP + colo | (same rule covers all three) |
-| `/-/readiness` |               |                              |
+1. Create DNS records: `webide.<GITLAB_DOMAIN>` → `<GITLAB_DOMAIN>` and `*.webide.<GITLAB_DOMAIN>` → `webide.<GITLAB_DOMAIN>` (both proxied)
+2. Add a Cloudflare Tunnel route for `*.webide.<GITLAB_DOMAIN>`
+3. Run the setup script:
 
 ```bash
-./cloudflare/waf/ratelimit-rules.sh --dry-run   # preview
-./cloudflare/waf/ratelimit-rules.sh             # provision
+scripts/webide.sh --dry-run   # preview
+scripts/webide.sh             # configure (cert + nginx + gitlab.rb)
 ```
 
-The health endpoints are already protected by Cloudflare's default DDoS mitigation and the tunnel
-(no direct origin exposure). This rule is belt-and-suspenders — it prevents sustained abuse of
-the health endpoints without affecting normal monitoring (even checking every 3 seconds stays
-well under the limit).
+Then set the domain in **Admin → Settings → General → Web IDE → Extension host domain**.
 
-Uses **read-merge-write** to preserve non-health rate limit rules in the same phase.
+> If using Cloudflare Access or WAF rules, ensure `*.webide.<GITLAB_DOMAIN>` is
+> excluded or allowed — the extension host serves static assets and must be reachable
+> without authentication.
 
-> Health endpoints require `gitlab_rails['monitoring_whitelist'] = ['0.0.0.0/0', '::/0']` in
-> `gitlab.rb` (configured by `scripts/setup.sh`) to allow checks from any source IP through the tunnel.
-> Without this, GitLab rejects health checks when `X-Forwarded-For` contains a non-local IP.
+---
 
-### `gitlab-cdn/`
+## Script & Component Details
 
-Cloudflare Worker that caches public GitLab static objects at the edge. Deployed separately
-via `wrangler deploy` (not part of `scripts/deploy.sh`). Run `generate-wrangler.sh` first to create
-`wrangler.jsonc` from `.env` values. See [`gitlab-cdn/README.md`](gitlab-cdn/README.md)
-for full documentation.
+For detailed documentation on each script, see the README in each directory:
 
-**Key design decisions:**
-
-- **Workers VPC** — the Worker reaches the private GitLab origin through a
-  [VPC Service](https://developers.cloudflare.com/workers-vpc/) via the same `cloudflared`
-  tunnel. The origin is never exposed publicly. HTTP is used inside the tunnel (QUIC encrypts
-  end-to-end).
-- **Indirect R2 access** — the Worker does not read from R2 directly. It fetches from GitLab
-  (which has `proxy_download = true`), and GitLab fetches from R2 via the S3 API. The Worker
-  caches the final response at the edge, so subsequent requests skip both GitLab and R2.
-- **Query normalization** — irrelevant query parameters are stripped before caching, so
-  `?inline=false&tracking=123` and `?inline=false` share the same cache entry.
-- **Auth separation** — requests with `?token=` (private/authenticated content) are proxied
-  but never cached. Public content (no token) is cached for 24h at the edge, 1h in the browser.
-- **Analytics Engine** — every request logs cache status, latency, content size, and path type
-  to a `gitlab_cdn` Analytics Engine dataset for monitoring.
+- [`scripts/README.md`](scripts/README.md) — deploy, validate, SSH config, SSO lockdown, Web IDE setup
+- [`runners/README.md`](runners/README.md) — external runner deployment and CI tool management
+- [`cloudflare/README.md`](cloudflare/README.md) — WAF, cache, and rate limit rule provisioning
+- [`gitlab-cdn/README.md`](gitlab-cdn/README.md) — CDN Worker architecture, deployment, and development
+- [`optional/README.md`](optional/README.md) — server hooks and file hooks
 
 ---
 
