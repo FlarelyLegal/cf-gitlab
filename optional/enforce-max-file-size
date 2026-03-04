@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+# ─── GitLab Server Hook: Enforce Max File Size ──────────────────────────────
+# Rejects pushes containing individual files that exceed a size threshold.
+# Complements block-file-extensions by catching oversized files of any type.
+#
+# Default threshold: 10 MB (10485760 bytes)
+#
+# Install (global, all repos):
+#   mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+#   cp enforce-max-file-size /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+#   chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-max-file-size
+#   chown git:git /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/enforce-max-file-size
+#
+# GitLab docs: https://docs.gitlab.com/administration/server_hooks.html
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Maximum file size in bytes (10 MB)
+MAX_FILE_SIZE=10485760
+MAX_FILE_SIZE_HUMAN="10 MB"
+
+# Zero SHA for branch creation/deletion
+ZERO_SHA="0000000000000000000000000000000000000000"
+
+EXIT_CODE=0
+
+while read -r old_sha new_sha ref; do
+  # Skip deletions
+  if [[ "${new_sha}" == "${ZERO_SHA}" ]]; then
+    continue
+  fi
+
+  # Determine the set of new/changed blobs to check
+  if [[ "${old_sha}" == "${ZERO_SHA}" ]]; then
+    # New branch: check all objects in the push not already on remote
+    OBJECTS=$(git rev-list "${new_sha}" --not --remotes 2>/dev/null)
+    if [[ -z "${OBJECTS}" ]]; then
+      continue
+    fi
+    # Get all blobs from those commits
+    BLOBS=$(echo "${OBJECTS}" | while IFS= read -r sha; do
+      git diff-tree -r --no-commit-id --diff-filter=ACR "${sha}" 2>/dev/null
+    done | sort -u)
+  else
+    # Existing branch: check new/changed files only
+    BLOBS=$(git diff-tree -r --no-commit-id --diff-filter=ACR "${old_sha}" "${new_sha}" 2>/dev/null)
+  fi
+
+  if [[ -z "${BLOBS}" ]]; then
+    continue
+  fi
+
+  OVERSIZED_FILES=()
+
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+
+    # diff-tree output format: :old_mode new_mode old_blob new_blob status\tfilepath
+    # Extract the new blob SHA and filepath
+    BLOB_SHA=$(echo "${line}" | awk '{print $4}')
+    FILEPATH=$(echo "${line}" | awk '{print $6}')
+
+    if [[ -z "${BLOB_SHA}" || "${BLOB_SHA}" == "0000000000000000000000000000000000000000" ]]; then
+      continue
+    fi
+
+    # Get blob size without extracting content
+    BLOB_SIZE=$(git cat-file -s "${BLOB_SHA}" 2>/dev/null)
+
+    if [[ -n "${BLOB_SIZE}" ]] && (( BLOB_SIZE > MAX_FILE_SIZE )); then
+      # Human-readable size
+      if (( BLOB_SIZE >= 1073741824 )); then
+        SIZE_HUMAN="$(( BLOB_SIZE / 1073741824 )) GB"
+      elif (( BLOB_SIZE >= 1048576 )); then
+        SIZE_HUMAN="$(( BLOB_SIZE / 1048576 )) MB"
+      else
+        SIZE_HUMAN="$(( BLOB_SIZE / 1024 )) KB"
+      fi
+      OVERSIZED_FILES+=("${FILEPATH} (${SIZE_HUMAN})")
+    fi
+  done <<< "${BLOBS}"
+
+  if [[ ${#OVERSIZED_FILES[@]} -gt 0 ]]; then
+    printf '\n' >&2
+    printf '  ========================================\n' >&2
+    printf '  PUSH REJECTED: file(s) exceed size limit\n' >&2
+    printf '  ========================================\n' >&2
+    printf '\n' >&2
+    printf '  Ref: %s\n' "${ref}" >&2
+    printf '  Max allowed file size: %s\n' "${MAX_FILE_SIZE_HUMAN}" >&2
+    printf '\n' >&2
+    printf '  Oversized files:\n' >&2
+    for entry in "${OVERSIZED_FILES[@]}"; do
+      printf '    - %s\n' "${entry}" >&2
+    done
+    printf '\n' >&2
+    printf '  What to do:\n' >&2
+    printf '    1. Remove the large file from your commit\n' >&2
+    printf '    2. Add it to .gitignore\n' >&2
+    printf '    3. Use Git LFS for large files: git lfs track "*.ext"\n' >&2
+    printf '    4. Use GitLab Packages or object storage instead\n' >&2
+    printf '  ========================================\n' >&2
+    printf '\n' >&2
+    EXIT_CODE=1
+  fi
+done
+
+exit "${EXIT_CODE}"

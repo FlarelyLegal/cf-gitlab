@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+# ─── GitLab Server Hook: Block Submodule Changes ────────────────────────────
+# Rejects pushes that add or modify a .gitmodules file.
+# Submodules are not used in this environment and can be an attack vector
+# (e.g., malicious submodule URLs, unexpected code injection).
+#
+# Install (global, all repos):
+#   mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
+#   cp block-submodule-changes /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
+#   chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/block-submodule-changes
+#   chown git:git /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/block-submodule-changes
+#
+# GitLab docs: https://docs.gitlab.com/administration/server_hooks.html
+# ─────────────────────────────────────────────────────────────────────────────
+
+ZERO_SHA="0000000000000000000000000000000000000000"
+
+EXIT_CODE=0
+
+while read -r old_sha new_sha ref; do
+  # Skip deletions
+  if [[ "${new_sha}" == "${ZERO_SHA}" ]]; then
+    continue
+  fi
+
+  # Determine changed files
+  if [[ "${old_sha}" == "${ZERO_SHA}" ]]; then
+    # New branch: check files not reachable from any remote branch
+    FILES=$(git log --diff-filter=ACR --name-only --pretty=format: "${new_sha}" --not --remotes 2>/dev/null | sort -u)
+    if [[ -z "${FILES}" ]]; then
+      # Fallback: list all files at the new ref
+      FILES=$(git ls-tree -r --name-only "${new_sha}" 2>/dev/null)
+    fi
+  else
+    FILES=$(git diff --diff-filter=ACR --name-only "${old_sha}" "${new_sha}" 2>/dev/null)
+  fi
+
+  if [[ -z "${FILES}" ]]; then
+    continue
+  fi
+
+  # Check for .gitmodules in the changed files
+  FOUND_GITMODULES=false
+  while IFS= read -r filepath; do
+    [[ -z "${filepath}" ]] && continue
+    basename="${filepath##*/}"
+    if [[ "${basename}" == ".gitmodules" ]]; then
+      FOUND_GITMODULES=true
+      break
+    fi
+  done <<< "${FILES}"
+
+  if ${FOUND_GITMODULES}; then
+    printf '\n' >&2
+    printf '  ========================================\n' >&2
+    printf '  PUSH REJECTED: submodules not allowed\n' >&2
+    printf '  ========================================\n' >&2
+    printf '\n' >&2
+    printf '  Ref: %s\n' "${ref}" >&2
+    printf '\n' >&2
+    printf '  Your push adds or modifies a .gitmodules file.\n' >&2
+    printf '  Git submodules are not permitted in this environment.\n' >&2
+    printf '\n' >&2
+    printf '  What to do:\n' >&2
+    printf '    1. Remove the .gitmodules file from your commit\n' >&2
+    printf '    2. Use a package manager or vendoring instead\n' >&2
+    printf '    3. Contact an admin if you have a legitimate need\n' >&2
+    printf '  ========================================\n' >&2
+    printf '\n' >&2
+    EXIT_CODE=1
+  fi
+done
+
+exit "${EXIT_CODE}"

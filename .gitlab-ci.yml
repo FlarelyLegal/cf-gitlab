@@ -51,3 +51,6 @@ cdn:test:
     when: always
     reports:
       junit: junit-cdn.xml
+  rules:
+    - changes:
+        - "gitlab-cdn/**"

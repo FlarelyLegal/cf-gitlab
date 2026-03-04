@@ -1,0 +1,105 @@
+# ─── Kroki Diagram Server ────────────────────────────────────────────────────
+# Renders diagrams-as-code for GitLab Markdown, AsciiDoc, etc.
+# GitLab integration: Admin > Settings > General > Kroki
+#   URL: http://<host-ip>:8000
+#
+# Network: companions only talk to the kroki gateway over an internal
+#          Docker network (kroki-net). Nothing is exposed to the host
+#          except the gateway on 127.0.0.1:8000.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  kroki-net:
+    driver: bridge
+    internal: true
+  kroki-gw:
+    driver: bridge
+
+services:
+  kroki:
+    image: yuzutech/kroki:${KROKI_VERSION:-latest}
+    container_name: kroki
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - kroki-net
+      - kroki-gw
+    ports:
+      - "8000:8000"
+    environment:
+      - KROKI_MERMAID_HOST=mermaid
+      - KROKI_BPMN_HOST=bpmn
+      - KROKI_EXCALIDRAW_HOST=excalidraw
+    depends_on:
+      - mermaid
+      - bpmn
+      - excalidraw
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+        reservations:
+          memory: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  mermaid:
+    image: yuzutech/kroki-mermaid:${KROKI_VERSION:-latest}
+    container_name: kroki-mermaid
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - kroki-net
+    expose:
+      - "8002"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+        reservations:
+          memory: 128m
+
+  bpmn:
+    image: yuzutech/kroki-bpmn:${KROKI_VERSION:-latest}
+    container_name: kroki-bpmn
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - kroki-net
+    expose:
+      - "8003"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512m
+        reservations:
+          memory: 128m
+
+  excalidraw:
+    image: yuzutech/kroki-excalidraw:${KROKI_VERSION:-latest}
+    container_name: kroki-excalidraw
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - kroki-net
+    expose:
+      - "8004"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+        reservations:
+          memory: 128m
