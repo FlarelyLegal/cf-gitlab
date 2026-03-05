@@ -1,0 +1,24 @@
+pre-push:
+  parallel: true
+  commands:
+    shfmt:
+      glob: "*.sh"
+      run: shfmt -d -i 2 -ci -bn {push_files}
+    shellcheck:
+      glob: "*.sh"
+      run: shellcheck {push_files}
+    markdownlint:
+      glob: "*.md"
+      run: markdownlint {push_files}
+    yamllint:
+      glob: "*.{yml,yaml}"
+      run: yamllint -s {push_files}
+    jsonlint:
+      glob: "*.json"
+      run: 'for f in {push_files}; do jq empty "$f" || exit 1; done'
+    taplo:
+      glob: "*.toml"
+      run: taplo fmt --check {push_files}
+    prettier:
+      glob: "*.{md,json,ts,yml,yaml}"
+      run: npx prettier --check {push_files}

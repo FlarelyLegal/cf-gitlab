@@ -42,9 +42,7 @@ trim = true
 # Footer appended to the full changelog.
 footer = ""
 # Postprocessors to clean up the output.
-postprocessors = [
-  { pattern = '  ', replace = "" },
-]
+postprocessors = [{ pattern = '  ', replace = "" }]
 
 [git]
 # Parse commits as Conventional Commits.
