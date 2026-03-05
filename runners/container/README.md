@@ -81,7 +81,7 @@ All config lives in a single `.env` file. Variables marked **required** must be 
 | -------------- | -------- | --------------------------- | --------------------------------------------------------- |
 | `UNPRIVILEGED` | No       | `1`                         | Unprivileged container (`1`=yes)                          |
 | `ONBOOT`       | No       | `1`                         | Start on Proxmox boot                                     |
-| `TIMEZONE`     | No       | `America/New_York`          | Timezone                                                  |
+| `TZ`           | No       | `America/New_York`          | Timezone                                                  |
 | `FEATURES`     | No       | `nesting=1,keyctl=1,fuse=1` | LXC features                                              |
 | `PCT_TAGS`     | No       | `runner;gitlab`             | Proxmox UI tags (semicolon-separated, **must be quoted**) |
 | `FIX_LOCALE`   | No       | `yes`                       | Install and configure `en_US.UTF-8` locale                |
