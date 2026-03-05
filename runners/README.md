@@ -49,10 +49,6 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh --dry-run'
 ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 ```
 
-> **Deprecation note:** `gitlabrunner.sh` uses the legacy `Ci::Runner.create!` method via Rails
-> console. The `glrt-` API flow (`POST /api/v4/user/runners`) is preferred for new runners --
-> the [container provisioning script](container/README.md) uses this approach.
-
 ## CI Tool Management
 
 After any runner is registered, install the tools CI jobs need:
