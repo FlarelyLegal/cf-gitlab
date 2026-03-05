@@ -1,0 +1,5 @@
+# SSH public keys -- one per line.
+# Injected into authorized_keys for root (both scripts) and gitlab-runner (runner script).
+# Copy to sshkeys.txt and replace with your actual keys.
+ssh-ed25519 AAAA... user@host
+ssh-ed25519 AAAA... user2@host2

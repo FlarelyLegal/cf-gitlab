@@ -28,7 +28,8 @@ SSH_OPTS=(-o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=
 
 # ─── Resolve paths ────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RUNNERS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${RUNNERS_DIR}/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/.env"
 
 if [[ ! -f "${ENV_FILE}" ]]; then
@@ -72,7 +73,7 @@ for var in GITLAB_DOMAIN ORG_NAME ORG_URL; do
 done
 
 # ─── Verify local files exist ────────────────────────────────────────────────
-for f in "${SCRIPT_DIR}/external-runner.sh" "${SCRIPT_DIR}/runner-apps.sh" "${SCRIPT_DIR}/runner-apps.json" "${REPO_ROOT}/config/banner.txt"; do
+for f in "${SCRIPT_DIR}/external-runner.sh" "${RUNNERS_DIR}/runner-apps.sh" "${RUNNERS_DIR}/runner-apps.json" "${REPO_ROOT}/config/banner.txt"; do
   if [[ ! -f "${f}" ]]; then
     printf '%s\n' "✗ Missing ${f}"
     exit 1
@@ -141,8 +142,8 @@ printf '%s\n' "✓ Secrets deployed"
 # ─── Push scripts ─────────────────────────────────────────────────────────────
 printf '%s\n' "→ Copying scripts to runner LXC..."
 scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/external-runner.sh" "${RUNNER_LXC_HOST}:/tmp/external-runner.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.sh" "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
-scp -q "${SSH_OPTS[@]}" "${SCRIPT_DIR}/runner-apps.json" "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
+scp -q "${SSH_OPTS[@]}" "${RUNNERS_DIR}/runner-apps.sh" "${RUNNER_LXC_HOST}:/tmp/runner-apps.sh"
+scp -q "${SSH_OPTS[@]}" "${RUNNERS_DIR}/runner-apps.json" "${RUNNER_LXC_HOST}:/tmp/runner-apps.json"
 scp -q "${SSH_OPTS[@]}" "${REPO_ROOT}/config/banner.txt" "${RUNNER_LXC_HOST}:/tmp/runner-banner.txt"
 ssh "${SSH_OPTS[@]}" "${RUNNER_LXC_HOST}" 'chmod +x /tmp/external-runner.sh /tmp/runner-apps.sh'
 printf '%s\n' "✓ Scripts copied"

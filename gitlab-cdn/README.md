@@ -125,15 +125,3 @@ npm run format         # prettier
 ```
 
 > `--remote` is required for local development because Workers VPC bindings don't work in local mode.
-
-## Files
-
-| File                   | Description                                                |
-| ---------------------- | ---------------------------------------------------------- |
-| `src/index.ts`         | Worker source — proxy, caching, analytics                  |
-| `generate-wrangler.sh` | Generates `wrangler.jsonc` from `../.env` values           |
-| `wrangler.jsonc`       | **Generated** — do not edit directly (gitignored)          |
-| `package.json`         | Dependencies (wrangler, workers-types, typescript)         |
-| `tsconfig.json`        | TypeScript config                                          |
-| `.dev.vars.example`    | Template for local development secrets                     |
-| `.gitignore`           | Ignores node_modules, .wrangler, .dev.vars, wrangler.jsonc |
