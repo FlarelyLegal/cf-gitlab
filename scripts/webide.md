@@ -20,7 +20,7 @@ scripts/webide.sh             # configure (cert + nginx + gitlab.rb)
 ## What Happens
 
 1. Requests a wildcard TLS certificate for `*.webide.<GITLAB_DOMAIN>` via certbot
-2. Creates `/etc/gitlab/nginx-custom/webide.conf` server block proxying `/assets/` to Workhorse
+2. Creates `/etc/gitlab/nginx-custom/webide.conf` server block proxying `/assets/` to Workhorse (listens on port 80 for Cloudflare Tunnel and 443 for direct access)
 3. Adds `custom_nginx_config` include to `gitlab.rb` (if not already present)
 4. Runs `gitlab-ctl reconfigure`
 

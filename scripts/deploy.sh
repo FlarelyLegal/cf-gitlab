@@ -113,7 +113,7 @@ if ${DRY_RUN}; then
   printf '%s\n' "  Org:            ${ORG_NAME} / ${ORG_URL}"
   printf '%s\n' "  SSH allow:      ${SSH_ALLOW_CIDR}"
   printf '%s\n' "  Internal DNS:   ${INTERNAL_DNS}"
-  printf '%s\n' "  CF API token:   ${CF_API_TOKEN:0:8}...(redacted)"
+  printf '%s\n' "  CF API token:   (set)"
   printf '%s\n' "  OIDC issuer:    ${OIDC_ISSUER:0:40}..."
   printf '%s\n' "  GitHub app:     ${GITHUB_APP_ID}"
   printf '%s\n' "  R2 buckets:     ${R2_BUCKET_PREFIX}-{artifacts,lfs,uploads,...} (10 buckets)"

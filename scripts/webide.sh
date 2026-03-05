@@ -9,6 +9,7 @@ set -euo pipefail
 # What it does:
 #   1. Requests a wildcard TLS certificate for *.webide.<GITLAB_DOMAIN>
 #   2. Creates an nginx server block to proxy /assets/ to Workhorse
+#      (port 80 for Cloudflare Tunnel, 443 for direct access)
 #   3. Adds the custom_nginx_config include to gitlab.rb (if not present)
 #   4. Reconfigures GitLab
 #
@@ -139,6 +140,7 @@ ssh "${SSH_OPTS[@]}" "${LXC_HOST}" "mkdir -p /etc/gitlab/nginx-custom"
 # Use printf to write the config (avoids heredoc escaping issues over SSH)
 # shellcheck disable=SC2029  # intentional client-side expansion
 ssh "${SSH_OPTS[@]}" "${LXC_HOST}" "printf '%s\n' 'server {
+  listen *:80;
   listen *:443 ssl;
   server_name *.${WEBIDE_DOMAIN};
 
