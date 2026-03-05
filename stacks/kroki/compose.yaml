@@ -1,7 +1,8 @@
 # ─── Kroki Diagram Server ────────────────────────────────────────────────────
 # Renders diagrams-as-code for GitLab Markdown, AsciiDoc, etc.
 # GitLab integration: Admin > Settings > General > Kroki
-#   URL: http://<host-ip>:8000
+#   URL: http://<host-ip>:${KROKI_PORT:-5003}
+# Dockge web UI: http://<host-ip>:5001
 #
 # Network: companions only talk to the kroki gateway over an internal
 #          Docker network (kroki-net). Nothing is exposed to the host
@@ -30,7 +31,7 @@ services:
       - kroki-net
       - kroki-gw
     ports:
-      - "8000:8000"
+      - "${KROKI_PORT:-5003}:8000"
     environment:
       - KROKI_MERMAID_HOST=mermaid
       - KROKI_BPMN_HOST=bpmn

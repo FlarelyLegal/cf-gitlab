@@ -136,20 +136,25 @@ PCT_CMD=(
 [[ -n "${PCT_TAGS:-}" ]] && PCT_CMD+=(-tags "$PCT_TAGS")
 
 # -- validate optional feature dependencies ------------------------------------
-if [[ "${INSTALL_DOCKER:-no}" == "yes" ]]; then
+if [[ "${ENABLE_DOCKER:-false}" == "true" ]]; then
   for var in DOCKER_CE_VERSION DOCKER_CE_CLI_VERSION CONTAINERD_VERSION \
     DOCKER_BUILDX_VERSION DOCKER_COMPOSE_VERSION; do
-    [[ -n "${!var:-}" ]] || die "INSTALL_DOCKER=yes but $var is not set"
+    [[ -n "${!var:-}" ]] || die "ENABLE_DOCKER=true but $var is not set"
   done
   ok "Docker pins validated"
 fi
-if [[ "${INSTALL_DOCKGE:-no}" == "yes" ]]; then
-  [[ -n "${DOCKGE_IMAGE_DIGEST:-}" ]] || die "INSTALL_DOCKGE=yes but DOCKGE_IMAGE_DIGEST is not set"
+if [[ "${ENABLE_DOCKGE:-false}" == "true" ]]; then
+  [[ "${ENABLE_DOCKER:-false}" == "true" ]] || die "ENABLE_DOCKGE=true requires ENABLE_DOCKER=true"
+  [[ -n "${DOCKGE_IMAGE_DIGEST:-}" ]] || die "ENABLE_DOCKGE=true but DOCKGE_IMAGE_DIGEST is not set"
   ok "Dockge digest validated"
 fi
-if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
-  [[ -n "${GITLAB_RUNNER_VERSION:-}" ]] || die "INSTALL_GITLAB_RUNNER=yes but GITLAB_RUNNER_VERSION is not set"
+if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
+  [[ "${ENABLE_DOCKER:-false}" == "true" ]] || die "ENABLE_RUNNER=true requires ENABLE_DOCKER=true"
+  [[ -n "${GITLAB_RUNNER_VERSION:-}" ]] || die "ENABLE_RUNNER=true but GITLAB_RUNNER_VERSION is not set"
   ok "GitLab Runner version validated"
+fi
+if [[ "${ENABLE_METRICS:-false}" == "true" ]]; then
+  [[ "${ENABLE_RUNNER:-false}" == "true" ]] || die "ENABLE_METRICS=true requires ENABLE_RUNNER=true"
 fi
 
 # -- dry-run: print execution plan and exit ------------------------------------
@@ -178,14 +183,14 @@ if [[ "$DRY_RUN" == "1" ]]; then
 
   KEY_COUNT=0
   [[ -n "${SSH_KEYS:-}" ]] && KEY_COUNT=$(printf '%s' "$SSH_KEYS" | grep -c '^ssh-' || true)
-  if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
     info "SSH keys:    ${KEY_COUNT} key(s) for root + gitlab-runner"
   else
     info "SSH keys:    ${KEY_COUNT} key(s) for root"
   fi
-  info "Fix locale:  ${FIX_LOCALE:-no}"
+  info "Fix locale:  ${FIX_LOCALE:-false}"
 
-  if [[ "${INSTALL_DOCKER:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_DOCKER:-false}" == "true" ]]; then
     printf '\n--- Docker ---\n'
     info "docker-ce:          ${DOCKER_CE_VERSION}"
     info "docker-ce-cli:      ${DOCKER_CE_CLI_VERSION}"
@@ -198,7 +203,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
     info "Packages held:      yes"
   fi
 
-  if [[ "${INSTALL_DOCKGE:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_DOCKGE:-false}" == "true" ]]; then
     printf '\n--- Dockge ---\n'
     info "Image digest:       ${DOCKGE_IMAGE_DIGEST}"
     info "Port:               ${DOCKGE_PORT:-5001}"
@@ -213,7 +218,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
     done
   fi
 
-  if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
     printf '\n--- GitLab Runner ---\n'
     info "gitlab-runner:      ${GITLAB_RUNNER_VERSION}"
     info "Runner type:        ${GITLAB_RUNNER_TYPE:-instance_type}"
@@ -223,6 +228,8 @@ if [[ "$DRY_RUN" == "1" ]]; then
     info "Concurrent:         ${GITLAB_RUNNER_CONCURRENT:-2}"
     info "Limit:              ${GITLAB_RUNNER_LIMIT:-1}"
     info "Output limit:       ${GITLAB_RUNNER_OUTPUT_LIMIT:-8192}"
+    [[ "${ENABLE_METRICS:-false}" == "true" ]] \
+      && info "Metrics port:       ${RUNNER_METRICS_PORT:-5002}"
     info "CPU quota:          ${RUNNER_CPU_QUOTA:-600%}"
     info "Memory max:         ${RUNNER_MEMORY_MAX:-6G}"
     [[ -n "${GITLAB_URL:-}" ]] \
@@ -233,7 +240,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
       && info "GPG key sha256:     ${GITLAB_RUNNER_GPG_SHA256:0:16}..."
   fi
 
-  if [[ "${INSTALL_NODEJS:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_NODEJS:-false}" == "true" ]]; then
     printf '\n--- Node.js ---\n'
     info "nodejs:             ${NODEJS_VERSION:-not set}"
     [[ -n "${NPM_GLOBALS:-}" ]] \
@@ -242,21 +249,21 @@ if [[ "$DRY_RUN" == "1" ]]; then
       && info "GPG key sha256:     ${NODESOURCE_GPG_SHA256:0:16}..."
   fi
 
-  if [[ "${INSTALL_TERRAFORM:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_TERRAFORM:-false}" == "true" ]]; then
     printf '\n--- Terraform ---\n'
     info "terraform:          ${TERRAFORM_VERSION:-not set}"
     [[ -n "${HASHICORP_GPG_SHA256:-}" ]] \
       && info "GPG key sha256:     ${HASHICORP_GPG_SHA256:0:16}..."
   fi
 
-  if [[ "${INSTALL_OPENTOFU:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_OPENTOFU:-false}" == "true" ]]; then
     printf '\n--- OpenTofu ---\n'
     info "tofu:               ${TOFU_VERSION:-not set}"
     [[ -n "${OPENTOFU_GPG_SHA256:-}" ]] \
       && info "GPG key sha256:     ${OPENTOFU_GPG_SHA256:0:16}..."
   fi
 
-  if [[ "${INSTALL_BUILD_TOOLS:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_BUILD_TOOLS:-false}" == "true" ]]; then
     printf '\n--- Build Tools ---\n'
     info "build-essential, python3-dev, python3-pip, python3-venv"
     [[ -n "${PIP_PACKAGES:-}" ]] \
@@ -275,7 +282,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
   info "Endpoint:           /health"
   info "Activation:         systemd socket (zero idle cost)"
 
-  if [[ "${INSTALL_UFW:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_UFW:-false}" == "true" ]]; then
     printf '\n--- UFW Firewall ---\n'
     info "Default inbound:    deny"
     info "Default outbound:   allow"
@@ -347,7 +354,7 @@ if [[ -n "${SSH_KEYS:-}" ]]; then
 fi
 
 # -- fix locale ----------------------------------------------------------------
-if [[ "${FIX_LOCALE:-no}" == "yes" ]]; then
+if [[ "${FIX_LOCALE:-false}" == "true" ]]; then
   run_in_ct '
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
@@ -395,9 +402,14 @@ if command -v docker >/dev/null 2>&1; then
 fi
 _ip=$(hostname -I | awk '{print $1}')
 printf '    Health:   http://%s:%s/health\n' "$_ip" "__HEALTH_PORT__"
+if [[ "__ENABLE_METRICS__" == "true" ]] && command -v gitlab-runner >/dev/null 2>&1; then
+    printf '    Metrics:  http://%s:%s/metrics\n' "$_ip" "__METRICS_PORT__"
+fi
 printf '\n'
 PROFILEEOF
 sed -i "s/__HEALTH_PORT__/${HEALTH_PORT:-5000}/" "$_TMP_PROFILE"
+sed -i "s/__ENABLE_METRICS__/${ENABLE_METRICS:-false}/" "$_TMP_PROFILE"
+sed -i "s/__METRICS_PORT__/${RUNNER_METRICS_PORT:-5002}/" "$_TMP_PROFILE"
 
 pct push "$CTID" "$_TMP_PROFILE" /etc/profile.d/00_lxc-details.sh
 pct exec "$CTID" -- chmod 644 /etc/profile.d/00_lxc-details.sh
@@ -409,7 +421,7 @@ ok "MOTD banner and login info configured"
 # ==============================================================================
 
 # -- install Docker (pinned) --------------------------------------------------
-if [[ "${INSTALL_DOCKER:-no}" == "yes" ]]; then
+if [[ "${ENABLE_DOCKER:-false}" == "true" ]]; then
   # (version pins already validated in pre-flight)
   info "Installing Docker packages:"
   printf '         docker-ce=%s\n' "${DOCKER_CE_VERSION}"
@@ -474,7 +486,7 @@ DAEMONEOF
 fi
 
 # -- install Dockge (pinned) --------------------------------------------------
-if [[ "${INSTALL_DOCKGE:-no}" == "yes" ]]; then
+if [[ "${ENABLE_DOCKGE:-false}" == "true" ]]; then
   # (digest already validated in pre-flight)
   DOCKGE_PORT="${DOCKGE_PORT:-5001}"
 
@@ -547,7 +559,7 @@ fi
 # PHASE 3: APT repos + packages for GitLab Runner toolchain
 # ==============================================================================
 
-if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
 
   # -- Add GitLab Runner APT repo ----------------------------------------------
   run_in_ct "
@@ -584,7 +596,7 @@ REPOEOF
   ok "GitLab Runner repo added"
 
   # -- Add NodeSource repo (if requested) --------------------------------------
-  if [[ "${INSTALL_NODEJS:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_NODEJS:-false}" == "true" ]]; then
     run_in_ct "
       set -euo pipefail
       curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
@@ -616,7 +628,7 @@ REPOEOF
   fi
 
   # -- Add HashiCorp repo (if requested) ---------------------------------------
-  if [[ "${INSTALL_TERRAFORM:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_TERRAFORM:-false}" == "true" ]]; then
     run_in_ct "
       set -euo pipefail
       curl -fsSL https://apt.releases.hashicorp.com/gpg \
@@ -643,7 +655,7 @@ REPOEOF
   fi
 
   # -- Add OpenTofu repo (if requested) ----------------------------------------
-  if [[ "${INSTALL_OPENTOFU:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_OPENTOFU:-false}" == "true" ]]; then
     run_in_ct "
       set -euo pipefail
       install -m 0755 -d /etc/apt/keyrings
@@ -690,10 +702,10 @@ REPOEOF
   # Build the package list dynamically
   _PKGS="gitlab-runner=${GITLAB_RUNNER_VERSION}"
   _PKGS="$_PKGS git jq rsync openssh-client"
-  [[ "${INSTALL_NODEJS:-no}" == "yes" ]] && _PKGS="$_PKGS nodejs=${NODEJS_VERSION}"
-  [[ "${INSTALL_TERRAFORM:-no}" == "yes" ]] && _PKGS="$_PKGS terraform=${TERRAFORM_VERSION}"
-  [[ "${INSTALL_OPENTOFU:-no}" == "yes" ]] && _PKGS="$_PKGS tofu=${TOFU_VERSION}"
-  [[ "${INSTALL_BUILD_TOOLS:-no}" == "yes" ]] && _PKGS="$_PKGS build-essential python3-dev python3-pip python3-venv"
+  [[ "${ENABLE_NODEJS:-false}" == "true" ]] && _PKGS="$_PKGS nodejs=${NODEJS_VERSION}"
+  [[ "${ENABLE_TERRAFORM:-false}" == "true" ]] && _PKGS="$_PKGS terraform=${TERRAFORM_VERSION}"
+  [[ "${ENABLE_OPENTOFU:-false}" == "true" ]] && _PKGS="$_PKGS tofu=${TOFU_VERSION}"
+  [[ "${ENABLE_BUILD_TOOLS:-false}" == "true" ]] && _PKGS="$_PKGS build-essential python3-dev python3-pip python3-venv"
 
   info "Installing APT packages:"
   for _p in $_PKGS; do
@@ -707,7 +719,7 @@ REPOEOF
     apt-get install -y ${_PKGS}
 
     # Hold pinned packages
-    for pkg in gitlab-runner ${INSTALL_NODEJS:+nodejs} ${INSTALL_TERRAFORM:+terraform} ${INSTALL_OPENTOFU:+tofu}; do
+    for pkg in gitlab-runner ${ENABLE_NODEJS:+nodejs} ${ENABLE_TERRAFORM:+terraform} ${ENABLE_OPENTOFU:+tofu}; do
       [[ -n \"\$pkg\" ]] && echo \"\$pkg hold\" | dpkg --set-selections 2>/dev/null || true
     done
 
@@ -715,12 +727,12 @@ REPOEOF
   " "Install APT packages"
 
   ok "Packages installed: gitlab-runner $(pct exec "$CTID" -- gitlab-runner --version 2>/dev/null | head -1 | awk '{print $2}')"
-  [[ "${INSTALL_NODEJS:-no}" == "yes" ]] && ok "Node.js $(pct exec "$CTID" -- node --version 2>/dev/null)"
-  [[ "${INSTALL_TERRAFORM:-no}" == "yes" ]] && ok "Terraform $(pct exec "$CTID" -- terraform --version 2>/dev/null | head -1 | awk '{print $2}')"
-  [[ "${INSTALL_OPENTOFU:-no}" == "yes" ]] && ok "OpenTofu $(pct exec "$CTID" -- tofu --version 2>/dev/null | head -1 | awk '{print $2}')"
+  [[ "${ENABLE_NODEJS:-false}" == "true" ]] && ok "Node.js $(pct exec "$CTID" -- node --version 2>/dev/null)"
+  [[ "${ENABLE_TERRAFORM:-false}" == "true" ]] && ok "Terraform $(pct exec "$CTID" -- terraform --version 2>/dev/null | head -1 | awk '{print $2}')"
+  [[ "${ENABLE_OPENTOFU:-false}" == "true" ]] && ok "OpenTofu $(pct exec "$CTID" -- tofu --version 2>/dev/null | head -1 | awk '{print $2}')"
 
   # -- Install NPM globals (pinned) -------------------------------------------
-  if [[ -n "${NPM_GLOBALS:-}" && "${INSTALL_NODEJS:-no}" == "yes" ]]; then
+  if [[ -n "${NPM_GLOBALS:-}" && "${ENABLE_NODEJS:-false}" == "true" ]]; then
     info "Installing NPM globals:"
     for _p in ${NPM_GLOBALS}; do
       printf '         %s\n' "$_p"
@@ -734,7 +746,7 @@ REPOEOF
   fi
 
   # -- Install pip packages (pinned) ------------------------------------------
-  if [[ -n "${PIP_PACKAGES:-}" && "${INSTALL_BUILD_TOOLS:-no}" == "yes" ]]; then
+  if [[ -n "${PIP_PACKAGES:-}" && "${ENABLE_BUILD_TOOLS:-false}" == "true" ]]; then
     info "Installing pip packages:"
     for _p in ${PIP_PACKAGES}; do
       printf '         %s\n' "$_p"
@@ -871,6 +883,15 @@ SYSCTLEOF
     "
     ok "concurrent set to ${GITLAB_RUNNER_CONCURRENT:-2}"
 
+    # Enable Prometheus metrics endpoint
+    if [[ "${ENABLE_METRICS:-false}" == "true" ]]; then
+      _METRICS_PORT="${RUNNER_METRICS_PORT:-5002}"
+      pct exec "$CTID" -- bash -c "
+        sed -i '/^concurrent = /a listen_address = \"0.0.0.0:${_METRICS_PORT}\"' /etc/gitlab-runner/config.toml
+      "
+      ok "Prometheus metrics on port ${_METRICS_PORT}"
+    fi
+
     # Registration summary
     printf '\n'
     info "Runner registered successfully in GitLab:"
@@ -882,6 +903,8 @@ SYSCTLEOF
     info "  Tags:         ${GITLAB_RUNNER_TAGS:-none}"
     info "  Run untagged: ${GITLAB_RUNNER_RUN_UNTAGGED:-false}"
     info "  Concurrent:   ${GITLAB_RUNNER_CONCURRENT:-2}"
+    [[ "${ENABLE_METRICS:-false}" == "true" ]] \
+      && info "  Metrics:      http://${_IP_BARE:-\$IP}:${RUNNER_METRICS_PORT:-5002}/metrics"
     info "  URL:          ${GITLAB_URL}/admin/runners/${_RUNNER_ID}"
     printf '\n'
   else
@@ -1051,7 +1074,7 @@ ok "Health check listening on port ${_HEALTH_PORT}"
 # PHASE 6: UFW Firewall
 # ==============================================================================
 
-if [[ "${INSTALL_UFW:-no}" == "yes" ]]; then
+if [[ "${ENABLE_UFW:-false}" == "true" ]]; then
   _UFW_FROM="${UFW_ALLOW_FROM:-10.0.0.0/8}"
   _UFW_PORTS="${UFW_INBOUND_PORTS:-22}"
 
@@ -1105,21 +1128,21 @@ info "LXC container $CTID created on ${CONTAINER_STORAGE} (${CORES} cores, ${MEM
 info "Network: ${_IP_BARE} (bridge ${BRIDGE:-vmbr1}, VLAN ${VLAN:-none}, MTU ${MTU:-1500})"
 [[ -n "${PCT_TAGS:-}" ]] && info "Proxmox tags: ${PCT_TAGS}"
 if [[ -n "${SSH_KEYS:-}" ]]; then
-  if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+  if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
     info "SSH keys injected for root + gitlab-runner"
   else
     info "SSH keys injected for root"
   fi
 fi
-[[ "${FIX_LOCALE:-no}" == "yes" ]] && info "Locale: en_US.UTF-8"
+[[ "${FIX_LOCALE:-false}" == "true" ]] && info "Locale: en_US.UTF-8"
 
-[[ "${INSTALL_DOCKER:-no}" == "yes" ]] && {
+[[ "${ENABLE_DOCKER:-false}" == "true" ]] && {
   _DVER=$(pct exec "$CTID" -- docker --version 2>/dev/null | awk '{print $3}' | tr -d ',')
   _CVER=$(pct exec "$CTID" -- docker compose version 2>/dev/null | awk '{print $NF}')
   info "Docker ${_DVER}, Compose ${_CVER} (pinned + held)"
   info "Docker daemon MTU: ${DOCKER_MTU:-1500}"
 }
-[[ "${INSTALL_DOCKGE:-no}" == "yes" ]] \
+[[ "${ENABLE_DOCKGE:-false}" == "true" ]] \
   && info "Dockge running on port ${DOCKGE_PORT:-5001} (pinned digest)"
 
 if [[ -d "${_STACKS_DIR:-}" ]]; then
@@ -1129,12 +1152,12 @@ if [[ -d "${_STACKS_DIR:-}" ]]; then
   done
 fi
 
-if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
   _GVER=$(pct exec "$CTID" -- gitlab-runner --version 2>/dev/null | head -1 | awk '{print $2}')
   info "gitlab-runner ${_GVER} (pinned + held)"
-  [[ "${INSTALL_NODEJS:-no}" == "yes" ]] && info "Node.js $(pct exec "$CTID" -- node --version 2>/dev/null)"
-  [[ "${INSTALL_TERRAFORM:-no}" == "yes" ]] && info "Terraform $(pct exec "$CTID" -- terraform --version 2>/dev/null | head -1 | awk '{print $2}')"
-  [[ "${INSTALL_OPENTOFU:-no}" == "yes" ]] && info "OpenTofu $(pct exec "$CTID" -- tofu --version 2>/dev/null | head -1 | awk '{print $2}')"
+  [[ "${ENABLE_NODEJS:-false}" == "true" ]] && info "Node.js $(pct exec "$CTID" -- node --version 2>/dev/null)"
+  [[ "${ENABLE_TERRAFORM:-false}" == "true" ]] && info "Terraform $(pct exec "$CTID" -- terraform --version 2>/dev/null | head -1 | awk '{print $2}')"
+  [[ "${ENABLE_OPENTOFU:-false}" == "true" ]] && info "OpenTofu $(pct exec "$CTID" -- tofu --version 2>/dev/null | head -1 | awk '{print $2}')"
   [[ -n "${NPM_GLOBALS:-}" ]] && info "NPM globals: $(printf '%s' "${NPM_GLOBALS}" | wc -w | tr -d ' ') packages installed"
   [[ -n "${PIP_PACKAGES:-}" ]] && info "Pip packages: ${PIP_PACKAGES}"
   info "Systemd limits: CPU=${RUNNER_CPU_QUOTA:-600%}, Mem=${RUNNER_MEMORY_MAX:-6G}"
@@ -1142,7 +1165,7 @@ fi
 
 info "Health:  http://${_IP_BARE}:${HEALTH_PORT:-5000}/health"
 
-[[ "${INSTALL_UFW:-no}" == "yes" ]] \
+[[ "${ENABLE_UFW:-false}" == "true" ]] \
   && info "UFW: deny inbound, allow outbound, allow ${UFW_INBOUND_PORTS:-22} from ${UFW_ALLOW_FROM:-10.0.0.0/8}"
 
 [[ -n "${SYSCTL_INOTIFY_MAX_USER_WATCHES:-}" ]] \
@@ -1152,23 +1175,25 @@ printf '\n--- Access ---\n'
 info "Console: pct enter $CTID"
 info "SSH:     ssh root@${_IP_BARE}"
 info "Health:  http://${_IP_BARE}:${HEALTH_PORT:-5000}/health"
-if [[ "${INSTALL_DOCKGE:-no}" == "yes" ]]; then
+if [[ "${ENABLE_DOCKGE:-false}" == "true" ]]; then
   info "Dockge:  http://${_IP_BARE}:${DOCKGE_PORT:-5001}"
   info "         Visit to create admin account on first login"
 fi
 [[ -n "${KROKI_PORT:-}" ]] \
   && info "Kroki:   http://${_IP_BARE}:${KROKI_PORT}"
+[[ "${ENABLE_METRICS:-false}" == "true" ]] \
+  && info "Metrics: http://${_IP_BARE}:${RUNNER_METRICS_PORT:-5002}/metrics"
 [[ -n "${_RUNNER_ID:-}" ]] \
   && info "Runner:  ${GITLAB_URL}/admin/runners/${_RUNNER_ID}"
 
-if [[ "${INSTALL_DOCKGE:-no}" == "yes" ]]; then
+if [[ "${ENABLE_DOCKGE:-false}" == "true" ]]; then
   printf '\n--- Stack layout ---\n'
   info "/opt/dockge/           -- Dockge itself"
   info "/opt/stacks/<name>/    -- compose.yaml per stack (Dockge manages these)"
   info "/opt/stacks/data/<name>/ -- persistent data volumes"
 fi
 
-if [[ "${INSTALL_GITLAB_RUNNER:-no}" == "yes" ]]; then
+if [[ "${ENABLE_RUNNER:-false}" == "true" ]]; then
   printf '\n--- Runner SSH Public Key ---\n'
   info "Add this to deployment targets that the runner needs to reach:"
   pct exec "$CTID" -- cat /home/gitlab-runner/.ssh/id_ed25519.pub 2>/dev/null

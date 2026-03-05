@@ -26,16 +26,17 @@ ssh root@proxmox 'bash /root/gitlab-runner-container.sh'
 
 The script creates a Debian 13 LXC and conditionally installs components based on feature flags:
 
-| Feature flag                | What it installs                                                 |
-| --------------------------- | ---------------------------------------------------------------- |
-| `INSTALL_DOCKER=yes`        | Docker CE (pinned versions, held from upgrades), MTU from `.env` |
-| `INSTALL_DOCKGE=yes`        | Dockge Docker UI (pinned digest), auto-deploys compose stacks    |
-| `INSTALL_GITLAB_RUNNER=yes` | GitLab Runner (API registration, `glrt-` token, systemd limits)  |
-| `INSTALL_NODEJS=yes`        | Node.js from NodeSource, optional NPM globals                    |
-| `INSTALL_TERRAFORM=yes`     | Terraform from HashiCorp                                         |
-| `INSTALL_OPENTOFU=yes`      | OpenTofu                                                         |
-| `INSTALL_BUILD_TOOLS=yes`   | build-essential, python3, pip, optional pip packages             |
-| `INSTALL_UFW=yes`           | UFW firewall (deny inbound, allow outbound, Docker forwarding)   |
+| Feature flag              | What it installs                                                 |
+| ------------------------- | ---------------------------------------------------------------- |
+| `ENABLE_DOCKER=true`      | Docker CE (pinned versions, held from upgrades), MTU from `.env` |
+| `ENABLE_DOCKGE=true`      | Dockge Docker UI (pinned digest), auto-deploys compose stacks    |
+| `ENABLE_RUNNER=true`      | GitLab Runner (API registration, `glrt-` token, systemd limits)  |
+| `ENABLE_METRICS=true`     | Prometheus metrics endpoint on runner (port 5002)                |
+| `ENABLE_NODEJS=true`      | Node.js from NodeSource, optional NPM globals                    |
+| `ENABLE_TERRAFORM=true`   | Terraform from HashiCorp                                         |
+| `ENABLE_OPENTOFU=true`    | OpenTofu                                                         |
+| `ENABLE_BUILD_TOOLS=true` | build-essential, python3, pip, optional pip packages             |
+| `ENABLE_UFW=true`         | UFW firewall (deny inbound, allow outbound, Docker forwarding)   |
 
 Every container also gets: SSH key injection, locale config, sysctl tuning, MOTD banner, and a `/health` JSON endpoint (systemd socket-activated, zero idle cost).
 
@@ -104,11 +105,11 @@ Keys are read from `sshkeys.txt` (one per line, comments/blanks ignored). Inject
 
 ### Docker
 
-Enabled with `INSTALL_DOCKER=yes`. All five package versions are required when enabled.
+Enabled with `ENABLE_DOCKER=true`. All five package versions are required when enabled.
 
 | Variable                 | Required | Default | Description                             |
 | ------------------------ | -------- | ------- | --------------------------------------- |
-| `INSTALL_DOCKER`         | No       | `no`    | Install Docker                          |
+| `ENABLE_DOCKER`          | No       | `false` | Install Docker                          |
 | `DOCKER_GPG_SHA256`      | No       | --      | SHA-256 of Docker APT GPG key           |
 | `DOCKER_CE_VERSION`      | Cond.    | --      | `docker-ce` package version             |
 | `DOCKER_CE_CLI_VERSION`  | Cond.    | --      | `docker-ce-cli` package version         |
@@ -123,7 +124,7 @@ All Docker packages are held (`dpkg --set-selections`) to prevent unintended upg
 
 | Variable              | Required | Default | Description                 |
 | --------------------- | -------- | ------- | --------------------------- |
-| `INSTALL_DOCKGE`      | No       | `no`    | Install Dockge Docker UI    |
+| `ENABLE_DOCKGE`       | No       | `false` | Install Dockge Docker UI    |
 | `DOCKGE_PORT`         | No       | `5001`  | Host port for Dockge web UI |
 | `DOCKGE_IMAGE_DIGEST` | Cond.    | --      | Pinned image digest         |
 
@@ -136,13 +137,14 @@ Compose stacks in `STACKS_DIR` are automatically deployed into `/opt/stacks/` (m
 | Variable     | Required | Default    | Description                                                   |
 | ------------ | -------- | ---------- | ------------------------------------------------------------- |
 | `STACKS_DIR` | No       | `./stacks` | Host directory containing stack subdirectories                |
-| `KROKI_PORT` | No       | --         | Kroki host port (used by Kroki compose stack, not the script) |
+| `KROKI_PORT` | No       | `5003`     | Kroki host port (used by Kroki compose stack, not the script) |
 
 ### GitLab Runner
 
 | Variable                            | Required | Default         | Description                                             |
 | ----------------------------------- | -------- | --------------- | ------------------------------------------------------- |
-| `INSTALL_GITLAB_RUNNER`             | No       | `no`            | Install and register a GitLab Runner                    |
+| `ENABLE_RUNNER`                     | No       | `false`         | Install and register a GitLab Runner                    |
+| `ENABLE_METRICS`                    | No       | `false`         | Enable Prometheus metrics endpoint (`/metrics`)         |
 | `GITLAB_URL`                        | Cond.    | --              | GitLab instance URL                                     |
 | `GITLAB_PAT`                        | Cond.    | --              | Personal Access Token (needs `create_runner` scope)     |
 | `GITLAB_RUNNER_VERSION`             | Cond.    | --              | APT package version (e.g. `18.9.0-1`)                   |
@@ -157,6 +159,7 @@ Compose stacks in `STACKS_DIR` are automatically deployed into `/opt/stacks/` (m
 | `GITLAB_RUNNER_LIMIT`               | No       | `1`             | Max jobs per runner                                     |
 | `GITLAB_RUNNER_OUTPUT_LIMIT`        | No       | `8192`          | Job log output limit (KB)                               |
 | `GITLAB_RUNNER_REQUEST_CONCURRENCY` | No       | `1`             | Concurrent job requests to GitLab                       |
+| `RUNNER_METRICS_PORT`               | No       | `5002`          | Prometheus metrics endpoint port (`/metrics`)           |
 | `RUNNER_CPU_QUOTA`                  | No       | `600%`          | systemd CPUQuota for runner service                     |
 | `RUNNER_MEMORY_MAX`                 | No       | `6G`            | systemd MemoryMax for runner service                    |
 
@@ -166,7 +169,7 @@ Registration uses the GitLab API (`POST /api/v4/user/runners`) to create a `glrt
 
 | Variable                | Required | Default | Description                                            |
 | ----------------------- | -------- | ------- | ------------------------------------------------------ |
-| `INSTALL_NODEJS`        | No       | `no`    | Install Node.js from NodeSource                        |
+| `ENABLE_NODEJS`         | No       | `false` | Install Node.js from NodeSource                        |
 | `NODEJS_VERSION`        | Cond.    | --      | APT package version                                    |
 | `NODESOURCE_GPG_SHA256` | No       | --      | SHA-256 of NodeSource GPG key                          |
 | `NPM_GLOBALS`           | No       | --      | Space-separated `pkg@version` list to install globally |
@@ -175,20 +178,20 @@ Registration uses the GitLab API (`POST /api/v4/user/runners`) to create a `glrt
 
 | Variable                   | Required | Default | Description                      |
 | -------------------------- | -------- | ------- | -------------------------------- |
-| `INSTALL_TERRAFORM`        | No       | `no`    | Install Terraform from HashiCorp |
+| `ENABLE_TERRAFORM`         | No       | `false` | Install Terraform from HashiCorp |
 | `TERRAFORM_VERSION`        | Cond.    | --      | APT package version              |
 | `HASHICORP_GPG_SHA256`     | No       | --      | SHA-256 of HashiCorp GPG key     |
-| `INSTALL_OPENTOFU`         | No       | `no`    | Install OpenTofu                 |
+| `ENABLE_OPENTOFU`          | No       | `false` | Install OpenTofu                 |
 | `TOFU_VERSION`             | Cond.    | --      | APT package version              |
 | `OPENTOFU_GPG_SHA256`      | No       | --      | SHA-256 of OpenTofu GPG key      |
 | `OPENTOFU_REPO_GPG_SHA256` | No       | --      | SHA-256 of OpenTofu repo GPG key |
 
 ### Build Tools
 
-| Variable              | Required | Default | Description                                                     |
-| --------------------- | -------- | ------- | --------------------------------------------------------------- |
-| `INSTALL_BUILD_TOOLS` | No       | `no`    | Install build-essential, python3-dev, python3-pip, python3-venv |
-| `PIP_PACKAGES`        | No       | --      | Space-separated `pkg==version` list                             |
+| Variable             | Required | Default | Description                                                     |
+| -------------------- | -------- | ------- | --------------------------------------------------------------- |
+| `ENABLE_BUILD_TOOLS` | No       | `false` | Install build-essential, python3-dev, python3-pip, python3-venv |
+| `PIP_PACKAGES`       | No       | --      | Space-separated `pkg==version` list                             |
 
 ### Sysctl / Health / UFW
 
@@ -198,7 +201,7 @@ Registration uses the GitLab API (`POST /api/v4/user/runners`) to create a `glrt
 | `SYSCTL_INOTIFY_MAX_USER_WATCHES`   | No       | --           | inotify max user watches (enables tuning when set)   |
 | `SYSCTL_INOTIFY_MAX_QUEUED_EVENTS`  | No       | `8388608`    | inotify max queued events                            |
 | `HEALTH_PORT`                       | No       | `5000`       | TCP port for `/health` JSON endpoint                 |
-| `INSTALL_UFW`                       | No       | `no`         | Install and configure UFW                            |
+| `ENABLE_UFW`                        | No       | `false`      | Install and configure UFW                            |
 | `UFW_ALLOW_FROM`                    | No       | `10.0.0.0/8` | CIDR to allow inbound from                           |
 | `UFW_INBOUND_PORTS`                 | No       | `22`         | Space-separated ports to allow from `UFW_ALLOW_FROM` |
 
@@ -214,7 +217,7 @@ cp gitlab-runner-container.env runner-3.env
 ssh root@proxmox 'bash /root/gitlab-runner-container.sh runner-3.env'
 ```
 
-For a Docker/Dockge-only container (no runner), set `INSTALL_GITLAB_RUNNER=no` and disable the toolchain flags.
+For a Docker/Dockge-only container (no runner), set `ENABLE_RUNNER=false` and disable the toolchain flags.
 
 ## Tear Down and Rebuild
 
