@@ -16,7 +16,14 @@ function mockEnv(overrides: Partial<Env> = {}): Env {
     ANALYTICS: {
       writeDataPoint: vi.fn(),
     } as unknown as AnalyticsEngineDataset,
+    EMAIL: {
+      send: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SendEmail,
     STORAGE_TOKEN: "test-storage-token",
+    WEBHOOK_SECRET: "test-webhook-secret",
+    WEBHOOK_RECIPIENT: "test@example.com",
+    WEBHOOK_FROM: "noreply@example.com",
+    WEBHOOK_FROM_NAME: "Test Worker",
     ...overrides,
   };
 }
