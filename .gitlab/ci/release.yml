@@ -55,8 +55,38 @@ release-gitlab-com:
   script:
     - *extract-changelog
     - |
+      # Check if release already exists (idempotency)
+      EXISTING=$(curl -sS -o /dev/null -w '%{http_code}' \
+        -H "PRIVATE-TOKEN: ${gitlab_com_release_token}" \
+        "https://gitlab.com/api/v4/projects/${GITLAB_COM_PROJECT_ID}/releases/${CI_COMMIT_TAG}")
+      if [ "${EXISTING}" = "200" ]; then
+        printf "gitlab.com release %s already exists, skipping.\n" "${CI_COMMIT_TAG}"
+        exit 0
+      fi
+    - |
+      # Wait for push mirror to sync the tag (up to 5 minutes)
+      MAX_ATTEMPTS=30
+      INTERVAL=10
+      for i in $(seq 1 "${MAX_ATTEMPTS}"); do
+        TAG_STATUS=$(curl -sS -o /dev/null -w '%{http_code}' \
+          -H "PRIVATE-TOKEN: ${gitlab_com_release_token}" \
+          "https://gitlab.com/api/v4/projects/${GITLAB_COM_PROJECT_ID}/repository/tags/${CI_COMMIT_TAG}")
+        if [ "${TAG_STATUS}" = "200" ]; then
+          printf "Tag %s found on gitlab.com (attempt %s).\n" "${CI_COMMIT_TAG}" "${i}"
+          break
+        fi
+        if [ "${i}" -eq "${MAX_ATTEMPTS}" ]; then
+          printf "Tag %s not found on gitlab.com after %s attempts, proceeding anyway.\n" \
+            "${CI_COMMIT_TAG}" "${MAX_ATTEMPTS}"
+          break
+        fi
+        printf "Waiting for tag %s on gitlab.com (attempt %s/%s)...\n" \
+          "${CI_COMMIT_TAG}" "${i}" "${MAX_ATTEMPTS}"
+        sleep "${INTERVAL}"
+      done
+    - |
       NOTES_JSON=$(jq -Rs '.' release-notes.md)
-      RESPONSE=$(curl -sf -X POST \
+      RESPONSE=$(curl -sS -X POST \
         -H "PRIVATE-TOKEN: ${gitlab_com_release_token}" \
         -H "Content-Type: application/json" \
         "https://gitlab.com/api/v4/projects/${GITLAB_COM_PROJECT_ID}/releases" \
@@ -89,8 +119,18 @@ release-github:
   script:
     - *extract-changelog
     - |
+      # Check if release already exists (idempotency)
+      EXISTING=$(curl -sS -o /dev/null -w '%{http_code}' \
+        -H "Authorization: token ${gitlab_self_hosted_mirror}" \
+        -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/FlarelyLegal/cf-gitlab/releases/tags/${CI_COMMIT_TAG}")
+      if [ "${EXISTING}" = "200" ]; then
+        printf "GitHub release %s already exists, skipping.\n" "${CI_COMMIT_TAG}"
+        exit 0
+      fi
+    - |
       NOTES_JSON=$(jq -Rs '.' release-notes.md)
-      RESPONSE=$(curl -sf -X POST \
+      RESPONSE=$(curl -sS -X POST \
         -H "Authorization: token ${gitlab_self_hosted_mirror}" \
         -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/FlarelyLegal/cf-gitlab/releases" \
