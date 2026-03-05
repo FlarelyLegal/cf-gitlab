@@ -6,11 +6,17 @@ Docker Compose services that run alongside GitLab. Each stack lives in its own s
 
 ## Stacks
 
-| Directory | Service                                                                   | Runs on    |
-| --------- | ------------------------------------------------------------------------- | ---------- |
-| `kroki/`  | Diagram renderer (PlantUML, Mermaid, GraphViz, BPMN, Excalidraw, D2, C4…) | GitLab LXC |
+| Directory | Service                                                                     | Runs on    |
+| --------- | --------------------------------------------------------------------------- | ---------- |
+| `kroki/`  | Diagram renderer (PlantUML, Mermaid, GraphViz, BPMN, Excalidraw, D2, C4...) | GitLab LXC |
 
-## Usage
+## Deployment
+
+Stacks are deployed to `/opt/stacks/<stack>/` on the target host. Two deployment methods:
+
+**Automatic** -- The [LXC provisioning script](../runners/container/README.md) auto-deploys stacks from its `STACKS_DIR` (default: `./stacks` next to the script) into Dockge during container creation. Place stack directories there and they are copied and started automatically.
+
+**Manual:**
 
 ```bash
 # Copy example env and adjust if needed
@@ -26,4 +32,4 @@ cd /opt/stacks/<stack> && docker compose up -d
 docker compose ps
 ```
 
-Stacks are deployed to `/opt/stacks/<stack>/` on the target host. The `.env.example` contains no secrets and can be committed as-is.
+The `.env.example` contains no secrets and can be committed as-is.

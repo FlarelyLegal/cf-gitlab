@@ -3,6 +3,7 @@
 *.env
 !*.env.example
 .dev.vars
+sshkeys.txt
 
 # Cloudflare Workers
 .wrangler/
