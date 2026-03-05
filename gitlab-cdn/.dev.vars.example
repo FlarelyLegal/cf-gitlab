@@ -1,2 +1,6 @@
-STORAGE_TOKEN=change-me-to-a-secure-random-token
+STORAGE_TOKEN=<your-storage-token>
+WEBHOOK_SECRET=<your-webhook-secret>
+WEBHOOK_RECIPIENT=you@example.com
+WEBHOOK_FROM=noreply@your-domain.com
+WEBHOOK_FROM_NAME=GitLab CDN
 CACHE_PRIVATE_OBJECTS=false

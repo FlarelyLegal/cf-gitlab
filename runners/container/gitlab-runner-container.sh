@@ -242,7 +242,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
     [[ -n "${GITLAB_URL:-}" ]] \
       && info "GitLab URL:         ${GITLAB_URL}"
     [[ -n "${GITLAB_PAT:-}" ]] \
-      && info "GitLab PAT:         ${GITLAB_PAT:0:10}... (set)"
+      && info "GitLab PAT:         (set)"
     [[ -n "${GITLAB_RUNNER_GPG_SHA256:-}" ]] \
       && info "GPG key sha256:     ${GITLAB_RUNNER_GPG_SHA256:0:16}..."
   fi

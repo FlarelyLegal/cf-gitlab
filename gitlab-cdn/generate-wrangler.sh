@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ─── Generate wrangler.jsonc from .env ───────────────────────────────────────
+# ──��� Generate wrangler.jsonc from .env ───────────────────────────────────────
 # Reads CDN_DOMAIN, CDN_WORKER_NAME, and VPC_SERVICE_ID from the parent .env
 # and writes a fully populated wrangler.jsonc for the CDN Worker.
 #
@@ -10,6 +10,7 @@ set -euo pipefail
 #   ./generate-wrangler.sh --dry-run    # preview without writing
 #
 # Requires: CDN_DOMAIN + VPC_SERVICE_ID in ../.env
+# Optional: ENABLE_WEBHOOK_EMAIL=true   → adds send_email binding
 # ─────────────────────────────────────────────────────────────────────────────
 
 DRY_RUN=false
@@ -45,6 +46,17 @@ done
 # Default worker name if not set
 CDN_WORKER_NAME="${CDN_WORKER_NAME:-cdn-gitlab}"
 
+# ──��� Optional: send_email binding ────────────────────────────────────────────
+SEND_EMAIL_BLOCK=""
+if [[ "${ENABLE_WEBHOOK_EMAIL:-}" == "true" ]]; then
+  SEND_EMAIL_BLOCK='  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+'
+fi
+
 # ─── Generate wrangler.jsonc ─────────────────────────────────────────────────
 OUTPUT_FILE="${SCRIPT_DIR}/wrangler.jsonc"
 
@@ -53,6 +65,7 @@ CONFIG=$(
 {
   "\$schema": "node_modules/wrangler/config-schema.json",
   "name": "${CDN_WORKER_NAME}",
+  "account_id": "${CF_ACCOUNT_ID:-}",
   "main": "src/index.ts",
   "compatibility_date": "2026-02-28",
   "placement": {
@@ -77,7 +90,7 @@ CONFIG=$(
       "dataset": "gitlab_cdn"
     }
   ],
-  "logpush": true,
+${SEND_EMAIL_BLOCK}  "logpush": true,
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,
@@ -107,4 +120,7 @@ else
   printf '%s\n' "  name:       ${CDN_WORKER_NAME}"
   printf '%s\n' "  route:      ${CDN_DOMAIN}"
   printf '%s\n' "  service_id: ${VPC_SERVICE_ID}"
+  if [[ -n "${SEND_EMAIL_BLOCK}" ]]; then
+    printf '%s\n' "  email:      enabled (send_email binding)"
+  fi
 fi

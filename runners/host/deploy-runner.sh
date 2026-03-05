@@ -101,7 +101,7 @@ if ${DRY_RUN}; then
   printf '%s\n' "  Runner tags:  ${RUNNER_RUNNER_TAGS}"
   printf '%s\n' "  SSH allow:    ${RUNNER_SSH_ALLOW_CIDR}"
   printf '%s\n' "  Org:          ${ORG_NAME} — ${ORG_URL}"
-  printf '%s\n' "  PAT:          ${RUNNER_GITLAB_PAT:0:8}...(redacted)"
+  printf '%s\n' "  PAT:          (set)"
   printf '\n'
   printf '%s\n' "  Would deploy:"
   printf '%s\n' "    /root/.secrets/runner.env"
