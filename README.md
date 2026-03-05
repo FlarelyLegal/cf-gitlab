@@ -265,6 +265,10 @@ In [dash.cloudflare.com → R2](https://dash.cloudflare.com/):
 
 Copy `.env.example` to `.env`. All variables are required unless marked optional.
 
+**Shared defaults:** `shared.env.example` contains variables common across multiple scripts
+(`GITLAB_DOMAIN`, `GITLAB_URL`, `GITLAB_PAT`, `TZ`). Copy to `shared.env` and fill in once —
+scripts source it as a fallback before their own `.env`, so local values always win.
+
 ### GitLab
 
 | Variable               | Description                                           |
@@ -286,7 +290,7 @@ Copy `.env.example` to `.env`. All variables are required unless marked optional
 | `CERT_EMAIL`     | Let's Encrypt notification email                   |
 | `INTERNAL_DNS`   | LAN DNS resolver IP (nginx OCSP stapling)          |
 | `SSH_ALLOW_CIDR` | CIDR for UFW SSH access (e.g. `10.0.0.0/8`)        |
-| `TIMEZONE`       | IANA timezone (e.g. `America/New_York`)            |
+| `TZ`             | IANA timezone (e.g. `America/New_York`)            |
 
 ### OmniAuth
 

@@ -18,7 +18,7 @@ if [[ -f /root/.secrets/gitlab.env ]]; then
   set +a
 fi
 
-TZ_VALUE="${TIMEZONE:-UTC}"
+TZ_VALUE="${TZ:-UTC}"
 
 # ─── Resolve config file ─────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

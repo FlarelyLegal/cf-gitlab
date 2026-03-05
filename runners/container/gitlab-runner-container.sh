@@ -43,7 +43,14 @@ for _arg in "$@"; do
 done
 ENV_FILE="${ENV_FILE:-$(dirname "$0")/gitlab-runner-container.env}"
 
-# -- load .env -----------------------------------------------------------------
+# -- load shared.env (defaults) then .env (overrides) -------------------------
+_SHARED_ENV="$(dirname "$0")/../../shared.env"
+if [[ -f "$_SHARED_ENV" ]]; then
+  # shellcheck disable=SC1090
+  source "$_SHARED_ENV"
+  ok "Loaded shared defaults from $_SHARED_ENV"
+fi
+
 [[ -f "$ENV_FILE" ]] || die "Env file not found: $ENV_FILE"
 
 # shellcheck disable=SC1090
@@ -127,7 +134,7 @@ PCT_CMD=(
   -"${NET_ID:-net0}" "name=${NET_NAME:-eth0},bridge=${BRIDGE:-vmbr1},ip=${IP},gw=${GATEWAY},tag=${VLAN:-},mtu=${MTU:-1500}"
   -nameserver "$NAMESERVER"
   -searchdomain "$SEARCHDOMAIN"
-  -timezone "${TIMEZONE:-UTC}"
+  -timezone "${TZ:-UTC}"
   -onboot "${ONBOOT:-0}"
   -unprivileged "${UNPRIVILEGED:-1}"
 )
