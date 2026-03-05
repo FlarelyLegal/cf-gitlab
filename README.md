@@ -105,20 +105,19 @@ the output of `cloudflared tunnel info`.
 
 ### 3. DNS Records (Cloudflare)
 
-Create these DNS records in your Cloudflare zone. Point them at the tunnel (CNAME records are
-automatically created when you add public hostnames in the Zero Trust dashboard).
+`gitlab.example.com` and `ssh.gitlab.example.com` are created automatically when you
+add public hostnames to the tunnel ([Step 4](#step-4-configure-tunnel-hostnames)).
 
-| Record                        | Type  | Value                          | Proxy   |
-| ----------------------------- | ----- | ------------------------------ | ------- |
-| `gitlab.example.com`          | CNAME | `<tunnel-id>.cfargotunnel.com` | Proxied |
-| `registry.gitlab.example.com` | CNAME | `<tunnel-id>.cfargotunnel.com` | Proxied |
-| `ssh.gitlab.example.com`      | CNAME | `<tunnel-id>.cfargotunnel.com` | Proxied |
-| `pages.example.com`           | CNAME | `<tunnel-id>.cfargotunnel.com` | Proxied |
-| `*.pages.example.com`         | CNAME | `<tunnel-id>.cfargotunnel.com` | Proxied |
-| `cdn.gitlab.example.com`      | CNAME | Worker route (if using CDN)    | Proxied |
+Create these additional CNAME records pointing at `gitlab.example.com`:
 
-> The CDN record is created automatically when you deploy the CDN Worker — the route is
-> set by `generate-wrangler.sh` from `CDN_DOMAIN` in `.env`, not manually in the DNS dashboard.
+| Record                        | Type  | Value                | Proxy   |
+| ----------------------------- | ----- | -------------------- | ------- |
+| `registry.gitlab.example.com` | CNAME | `gitlab.example.com` | Proxied |
+| `pages.example.com`           | CNAME | `gitlab.example.com` | Proxied |
+| `*.pages.example.com`         | CNAME | `gitlab.example.com` | Proxied |
+
+> `cdn.gitlab.example.com` is created automatically when you deploy the CDN Worker —
+> the route is set by `generate-wrangler.sh` from `CDN_DOMAIN` in `.env`.
 
 ### 4. Cloudflare API Token
 
@@ -433,12 +432,15 @@ This pushes secrets and scripts to the LXC, then executes `scripts/setup.sh` rem
 Now that GitLab is installed and running, add public hostnames to your tunnel in the
 [Zero Trust dashboard](https://dash.cloudflare.com/one) → **Networks → Connectors → Cloudflare Tunnels → your tunnel → Public Hostname**.
 
-| Hostname                      | Service              | Settings                                                           |
-| ----------------------------- | -------------------- | ------------------------------------------------------------------ |
-| `gitlab.example.com`          | `https://127.0.0.1`  | HTTP Host Header: `gitlab.example.com`, No TLS Verify: ON          |
-| `registry.gitlab.example.com` | `https://127.0.0.1`  | HTTP Host Header: `registry.gitlab.example.com`, No TLS Verify: ON |
-| `pages.example.com`           | `https://127.0.0.1`  | HTTP Host Header: `pages.example.com`, No TLS Verify: ON           |
-| `ssh.gitlab.example.com`      | `ssh://127.0.0.1:22` | (none required)                                                    |
+| Hostname                 | Service              | Origin Settings                                 |
+| ------------------------ | -------------------- | ----------------------------------------------- |
+| `ssh.gitlab.example.com` | `ssh://127.0.0.1:22` | Disable Chunked Encoding: ON                    |
+| `gitlab.example.com`     | `https://127.0.0.1`  | No TLS Verify: ON, Disable Chunked Encoding: ON |
+
+> Adding these hostnames automatically creates proxied CNAME records in your DNS.
+> Registry and Pages subdomains do not need tunnel routes — they CNAME to
+> `gitlab.example.com` ([Section 3](#3-dns-records-cloudflare)) and nginx routes them
+> by Host header.
 
 > **No TLS Verify** is required because the tunnel terminates at `127.0.0.1` where nginx serves
 > the certbot-issued certificate. The tunnel itself is encrypted end-to-end (QUIC).
