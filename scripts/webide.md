@@ -23,8 +23,9 @@ scripts/webide.sh             # configure (cert + nginx + gitlab.rb)
 2. Creates `/etc/gitlab/nginx-custom/webide.conf` server block proxying `/assets/` to Workhorse (listens on port 80 for Cloudflare Tunnel and 443 for direct access)
 3. Adds `custom_nginx_config` include to `gitlab.rb` (if not already present)
 4. Runs `gitlab-ctl reconfigure`
+5. Enables feature flags, creates OAuth app, sets extension host domain
 
-Then set the domain in **Admin -> Settings -> General -> Web IDE -> Extension host domain**.
+A validation summary prints at the end with ✓/✗ for each component.
 
 > If using Cloudflare Access or WAF rules, ensure `*.webide.<GITLAB_DOMAIN>` is
 > excluded or allowed -- the extension host serves static assets and must be reachable
