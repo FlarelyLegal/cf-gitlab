@@ -1,0 +1,2 @@
+[codespell]
+skip = .git,.jj,node_modules,*.lock
