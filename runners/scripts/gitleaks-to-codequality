@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Convert gitleaks JSON output to GitLab Code Quality (CodeClimate) format.
+
+Usage:
+    gitleaks detect -f json -r gitleaks.json ...
+    gitleaks-to-codequality gitleaks.json > gl-codequality-gitleaks.json
+    cat gitleaks.json | gitleaks-to-codequality > gl-codequality-gitleaks.json
+"""
+
+import hashlib
+import json
+import sys
+
+
+def convert(gitleaks_data):
+    """Convert gitleaks JSON to CodeClimate format."""
+    issues = []
+
+    for finding in gitleaks_data:
+        rule_id = finding.get("RuleID", "unknown")
+        description = finding.get("Description", "Secret detected")
+        file_path = finding.get("File", "unknown")
+        start_line = finding.get("StartLine", 1)
+        fingerprint_src = finding.get(
+            "Fingerprint",
+            f"{file_path}:{start_line}:{rule_id}",
+        )
+
+        fingerprint = hashlib.md5(fingerprint_src.encode()).hexdigest()
+
+        issues.append(
+            {
+                "type": "issue",
+                "check_name": f"gitleaks/{rule_id}",
+                "description": description,
+                "categories": ["Security"],
+                "severity": "blocker",
+                "fingerprint": fingerprint,
+                "location": {
+                    "path": file_path,
+                    "lines": {"begin": start_line},
+                },
+            }
+        )
+
+    return issues
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] != "-":
+        with open(sys.argv[1]) as f:
+            data = json.load(f)
+    else:
+        data = json.load(sys.stdin)
+
+    result = convert(data)
+    json.dump(result, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+
+
+if __name__ == "__main__":
+    main()

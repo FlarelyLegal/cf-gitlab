@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Convert semgrep JSON output to GitLab Code Quality (CodeClimate) format.
+
+Usage:
+    semgrep scan --json --json-output=semgrep.json ...
+    semgrep-to-codequality semgrep.json > gl-codequality-semgrep.json
+    cat semgrep.json | semgrep-to-codequality > gl-codequality-semgrep.json
+"""
+
+import hashlib
+import json
+import sys
+
+SEVERITY_MAP = {
+    "ERROR": "critical",
+    "WARNING": "major",
+    "INFO": "minor",
+}
+
+
+def convert(semgrep_data):
+    """Convert semgrep JSON to CodeClimate format."""
+    issues = []
+
+    for result in semgrep_data.get("results", []):
+        check_id = result.get("check_id", "unknown")
+        file_path = result.get("path", "unknown")
+        start_line = result.get("start", {}).get("line", 1)
+        extra = result.get("extra", {})
+        message = extra.get("message", "Semgrep finding")
+        severity = SEVERITY_MAP.get(
+            extra.get("severity", "WARNING"), "major"
+        )
+        category = extra.get("metadata", {}).get("category", "security")
+
+        # Use check_id + path + line for fingerprint
+        fingerprint = hashlib.md5(
+            f"{check_id}:{file_path}:{start_line}".encode()
+        ).hexdigest()
+
+        # Map semgrep categories to CodeClimate categories
+        categories = []
+        if category == "security":
+            categories.append("Security")
+        elif category == "correctness":
+            categories.append("Bug Risk")
+        elif category == "performance":
+            categories.append("Performance")
+        else:
+            categories.append("Style")
+
+        issues.append(
+            {
+                "type": "issue",
+                "check_name": check_id,
+                "description": message,
+                "categories": categories,
+                "severity": severity,
+                "fingerprint": fingerprint,
+                "location": {
+                    "path": file_path,
+                    "lines": {"begin": start_line},
+                },
+            }
+        )
+
+    return issues
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] != "-":
+        with open(sys.argv[1]) as f:
+            data = json.load(f)
+    else:
+        data = json.load(sys.stdin)
+
+    result = convert(data)
+    json.dump(result, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+
+
+if __name__ == "__main__":
+    main()

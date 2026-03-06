@@ -5,7 +5,7 @@ prettier:
   stage: lint
   script:
     - printf "Prettier %s\n" "$(npx prettier --version)"
-    - npx prettier --check "**/*.{md,json,ts,yml,yaml}" --ignore-path .gitignore
+    - npx prettier --check "**/*.{md,json,ts,yml,yaml}" --ignore-path .gitignore --ignore-path .prettierignore
   rules:
     - changes:
         - "**/*.md"

@@ -8,8 +8,13 @@ shfmt:
     - |
       SCRIPTS=$(find . -name '*.sh' \
         -not -path '*/node_modules/*' -not -path '*/.git/*' | sort)
-      HOOKS="./optional/detect-secrets ./optional/enforce-branch-naming \
-        ./optional/block-file-extensions ./optional/enforce-commit-message"
+      HOOKS=""
+      for h in detect-secrets enforce-branch-naming \
+        block-file-extensions enforce-commit-message; do
+        if [ -f "./optional/$h" ]; then
+          HOOKS="$HOOKS ./optional/$h"
+        fi
+      done
       FAIL=0
       for f in $SCRIPTS $HOOKS; do
         if shfmt -d -i 2 -ci -bn "$f" > /dev/null 2>&1; then

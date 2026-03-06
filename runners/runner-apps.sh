@@ -3,8 +3,9 @@ set -euo pipefail
 
 # ─── Runner App Installer ────────────────────────────────────────────────────
 # Installs all tools defined in runner-apps.json on the GitLab Runner LXC.
-# Reads the JSON manifest and installs apt packages, Docker, Node.js, and
-# global npm packages.
+# Reads the JSON manifest and installs apt packages, GitLab Runner, Docker,
+# IaC tools (Terraform/OpenTofu), Node.js, global npm packages, pip packages,
+# standalone binaries, and custom CI helper scripts.
 #
 # Usage:
 #   bash runner-apps.sh              # install everything
@@ -254,7 +255,69 @@ if jq -e '.pip' "${MANIFEST}" >/dev/null 2>&1; then
   printf '\n'
 fi
 
-# ─── 6. Standalone binaries ──────────────────────────────────────────────────
+# ─── 6. GitLab Runner ────────────────────────────────────────────────────────
+if jq -e '.gitlab_runner' "${MANIFEST}" >/dev/null 2>&1; then
+  printf '%s\n' "── GitLab Runner ──"
+  RUNNER_TO_INSTALL=()
+
+  while IFS= read -r pkg; do
+    if is_apt_installed "${pkg}"; then
+      printf '%s\n' "  �� ${pkg} (installed)"
+    else
+      printf '%s\n' "  ○ ${pkg} (will install)"
+      RUNNER_TO_INSTALL+=("${pkg}")
+    fi
+  done < <(jq -r '.gitlab_runner.packages[].name' "${MANIFEST}")
+
+  if [[ ${#RUNNER_TO_INSTALL[@]} -gt 0 ]]; then
+    if ${DRY_RUN}; then
+      printf '\n'
+      printf '%s\n' "  Would install: ${RUNNER_TO_INSTALL[*]}"
+      printf '%s\n' "  (Requires GitLab Runner APT repo to be configured)"
+    else
+      printf '\n'
+      printf '%s\n' "→ Installing ${#RUNNER_TO_INSTALL[@]} GitLab Runner packages..."
+      apt-get install -y -qq "${RUNNER_TO_INSTALL[@]}" >/dev/null
+      printf '%s\n' "✓ GitLab Runner packages installed"
+    fi
+  else
+    printf '%s\n' "  All GitLab Runner packages already installed"
+  fi
+  printf '\n'
+fi
+
+# ─── 7. IaC tools ───────────────────────────────────────────────────────────
+if jq -e '.iac' "${MANIFEST}" >/dev/null 2>&1; then
+  printf '%s\n' "── IaC Tools ──"
+  IAC_TO_INSTALL=()
+
+  while IFS= read -r pkg; do
+    if is_apt_installed "${pkg}"; then
+      printf '%s\n' "  ✓ ${pkg} (installed)"
+    else
+      printf '%s\n' "  ○ ${pkg} (will install)"
+      IAC_TO_INSTALL+=("${pkg}")
+    fi
+  done < <(jq -r '.iac.packages[].name' "${MANIFEST}")
+
+  if [[ ${#IAC_TO_INSTALL[@]} -gt 0 ]]; then
+    if ${DRY_RUN}; then
+      printf '\n'
+      printf '%s\n' "  Would install: ${IAC_TO_INSTALL[*]}"
+      printf '%s\n' "  (Requires HashiCorp + OpenTofu APT repos to be configured)"
+    else
+      printf '\n'
+      printf '%s\n' "→ Installing ${#IAC_TO_INSTALL[@]} IaC packages..."
+      apt-get install -y -qq "${IAC_TO_INSTALL[@]}" >/dev/null
+      printf '%s\n' "✓ IaC packages installed"
+    fi
+  else
+    printf '%s\n' "  All IaC packages already installed"
+  fi
+  printf '\n'
+fi
+
+# ─── 8. Standalone binaries ──────────────────────────────────────────────────
 if jq -e '.binary' "${MANIFEST}" >/dev/null 2>&1; then
   printf '%s\n' "── Standalone Binaries ──"
 
@@ -291,6 +354,66 @@ if jq -e '.binary' "${MANIFEST}" >/dev/null 2>&1; then
   printf '\n'
 fi
 
+# ─── 9. Custom helper scripts ─────────────────────────────────────────────────
+if jq -e '.scripts' "${MANIFEST}" >/dev/null 2>&1; then
+  printf '%s\n' "── Custom Helper Scripts ──"
+  INSTALL_DIR=$(jq -r '.scripts.install_dir // "/usr/local/bin"' "${MANIFEST}")
+  SOURCE_DIR=$(jq -r '.scripts.source_dir // "scripts"' "${MANIFEST}")
+  SCRIPTS_INSTALLED=0
+  SCRIPTS_SKIPPED=0
+
+  while IFS= read -r entry; do
+    name=$(printf '%s' "${entry}" | jq -r '.name')
+    source_file=$(printf '%s' "${entry}" | jq -r '.source // empty')
+
+    # Resolve source path relative to the manifest directory
+    if [[ -n "${source_file}" ]]; then
+      src_path="${SCRIPT_DIR}/${source_file}"
+    else
+      src_path="${SCRIPT_DIR}/${SOURCE_DIR}/${name}"
+    fi
+
+    dest="${INSTALL_DIR}/${name}"
+
+    if [[ ! -f "${src_path}" ]]; then
+      printf '%s\n' "  ⚠ ${name} — source not found: ${src_path}"
+      continue
+    fi
+
+    # Compare checksums to decide if install/update is needed
+    if [[ -f "${dest}" ]]; then
+      src_hash=$(md5sum "${src_path}" 2>/dev/null | cut -d' ' -f1)
+      dest_hash=$(md5sum "${dest}" 2>/dev/null | cut -d' ' -f1)
+      if [[ "${src_hash}" == "${dest_hash}" ]]; then
+        printf '%s\n' "  ✓ ${name} (up to date)"
+        SCRIPTS_SKIPPED=$((SCRIPTS_SKIPPED + 1))
+        continue
+      else
+        printf '%s\n' "  ↻ ${name} (will update)"
+      fi
+    else
+      printf '%s\n' "  ○ ${name} (will install)"
+    fi
+
+    if ${DRY_RUN}; then
+      printf '%s\n' "    Would copy: ${src_path} → ${dest}"
+    else
+      cp "${src_path}" "${dest}"
+      chmod +x "${dest}"
+      SCRIPTS_INSTALLED=$((SCRIPTS_INSTALLED + 1))
+    fi
+  done < <(jq -c '.scripts.packages[]' "${MANIFEST}")
+
+  if ${DRY_RUN}; then
+    printf '%s\n' "  ${SCRIPTS_SKIPPED} already up to date"
+  elif [[ ${SCRIPTS_INSTALLED} -gt 0 ]]; then
+    printf '%s\n' "✓ ${SCRIPTS_INSTALLED} helper script(s) installed to ${INSTALL_DIR}"
+  else
+    printf '%s\n' "  All helper scripts already up to date"
+  fi
+  printf '\n'
+fi
+
 # ─── Summary ──────────────────────────────────────────────────────────────────
 trap - ERR
 
@@ -301,11 +424,14 @@ else
   printf '%s\n' "  Runner apps installed"
   printf '\n'
   printf '%s\n' "  APT:      $(jq '.apt.packages | length' "${MANIFEST}") packages"
+  printf '%s\n' "  Runner:   $(gitlab-runner --version 2>/dev/null | head -1 || printf 'not found')"
   printf '%s\n' "  Docker:   $(docker --version 2>/dev/null | cut -d, -f1 || printf 'not found')"
+  printf '%s\n' "  IaC:      $(jq '.iac.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') packages"
   printf '%s\n' "  Node:     $(node --version 2>/dev/null || printf 'not found')"
   printf '%s\n' "  npm:      $(npm --version 2>/dev/null || printf 'not found')"
   printf '%s\n' "  Global:   $(jq '.npm_global.packages | length' "${MANIFEST}") npm packages"
   printf '%s\n' "  pip:      $(jq '.pip.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') packages"
   printf '%s\n' "  Binaries: $(jq '.binary.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') standalone"
+  printf '%s\n' "  Scripts:  $(jq '.scripts.packages | length' "${MANIFEST}" 2>/dev/null || printf '0') helpers"
   printf '%s\n' "════════════════════════════════════════════════════"
 fi

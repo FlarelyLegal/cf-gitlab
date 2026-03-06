@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ─── Update Runners ──────────────────────────────────────────────────────────
-# Local orchestrator that pushes runner-apps.json + runner-apps.sh to each
-# runner LXC and executes runner-apps.sh remotely. Idempotent: installs
-# missing packages and skips anything already present.
+# Local orchestrator that pushes runner-apps.json, runner-apps.sh, and the
+# scripts/ directory to each runner LXC and executes runner-apps.sh remotely.
+# Idempotent: installs missing packages and skips anything already present.
 #
 # Runner targets are read from .env (RUNNER_HOSTS, comma-separated) or can
 # be passed as arguments.
@@ -43,6 +43,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/.env"
 MANIFEST="${SCRIPT_DIR}/runner-apps.json"
 INSTALLER="${SCRIPT_DIR}/runner-apps.sh"
+SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 
 for f in "${MANIFEST}" "${INSTALLER}"; do
   if [[ ! -f "${f}" ]]; then
@@ -50,6 +51,10 @@ for f in "${MANIFEST}" "${INSTALLER}"; do
     exit 1
   fi
 done
+
+if [[ ! -d "${SCRIPTS_DIR}" ]]; then
+  printf '%s\n' "⚠ Missing ${SCRIPTS_DIR} — helper scripts will not be deployed"
+fi
 
 # ─── Resolve runner hosts ───────────────────────────────────────────────────
 if [[ ${#HOSTS[@]} -eq 0 ]]; then
@@ -108,11 +113,15 @@ for host in "${HOSTS[@]}"; do
   fi
   printf '%s\n' "✓ SSH connected"
 
-  # Push manifest + installer
-  printf '%s\n' "→ Copying manifest and installer..."
+  # Push manifest + installer + helper scripts
+  printf '%s\n' "→ Copying manifest, installer, and helper scripts..."
   scp -q "${SSH_OPTS[@]}" "${MANIFEST}" "${host}:/tmp/runner-apps.json"
   scp -q "${SSH_OPTS[@]}" "${INSTALLER}" "${host}:/tmp/runner-apps.sh"
   ssh "${SSH_OPTS[@]}" "${host}" 'chmod +x /tmp/runner-apps.sh'
+  if [[ -d "${SCRIPTS_DIR}" ]]; then
+    ssh "${SSH_OPTS[@]}" "${host}" 'mkdir -p /tmp/scripts'
+    scp -q "${SSH_OPTS[@]}" "${SCRIPTS_DIR}"/* "${host}:/tmp/scripts/"
+  fi
   printf '%s\n' "✓ Files copied"
   printf '\n'
 

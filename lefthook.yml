@@ -3,3 +3,16 @@ remotes:
     ref: main
     configs:
       - lefthook-base.yml
+
+pre-push:
+  commands:
+    changelog-check:
+      run: >-
+        tmp=$(mktemp);
+        git-cliff -o "$tmp" 2>/dev/null;
+        if ! diff -q CHANGELOG.md "$tmp" >/dev/null 2>&1; then
+          echo "CHANGELOG.md is out of date. Run: jj push (or: git-cliff -o CHANGELOG.md)";
+          rm -f "$tmp";
+          exit 1;
+        fi;
+        rm -f "$tmp"

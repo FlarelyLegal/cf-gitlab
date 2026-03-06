@@ -1,12 +1,23 @@
 # ─── Markdownlint ───────────────────────────────────────────────────────────
 # Lint Markdown files for structural issues beyond what Prettier catches.
-# Config in .markdownlint.jsonc at repo root.
+# Config in .markdownlint-cli2.jsonc or .markdownlint.jsonc at repo root.
+# Produces JUnit XML and Code Quality reports for the MR widget.
+# Requires: markdownlint-cli2, markdownlint-cli2-formatter-junit,
+#           markdownlint-cli2-formatter-codequality,
+#           markdownlint-junit-config on the runner.
 markdownlint:
   stage: lint
+  before_script:
+    - markdownlint-junit-config markdownlint.xml gl-codequality-markdownlint.json
   script:
     - printf "markdownlint-cli2 %s\n" "$(markdownlint-cli2 --version 2>&1 | head -1)"
     - markdownlint-cli2 "**/*.md" "#**/node_modules/**"
+  artifacts:
+    when: always
+    reports:
+      junit: markdownlint.xml
+      codequality: gl-codequality-markdownlint.json
   rules:
     - changes:
         - "**/*.md"
-        - ".markdownlint.jsonc"
+        - ".markdownlint-cli2.jsonc"

@@ -1,0 +1,29 @@
+# ─── Gitleaks ────────────────────────────────────────────────────────────────
+# Scan for secrets in git history using gitleaks.
+# Produces JUnit XML and Code Quality reports for the MR widget.
+# Requires: gitleaks, gitleaks-to-codequality on the runner.
+gitleaks:
+  stage: lint
+  variables:
+    GIT_DEPTH: 0
+  script:
+    - printf "gitleaks %s\n" "$(gitleaks version)"
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        SCAN_ARGS="--log-opts=${CI_MERGE_REQUEST_DIFF_BASE_SHA}..HEAD"
+      else
+        SCAN_ARGS="--log-opts=-1"
+      fi
+    - gitleaks detect --source . $SCAN_ARGS -f json -r gitleaks-raw.json --no-banner --exit-code 0
+    - gitleaks detect --source . $SCAN_ARGS -f junit -r gitleaks.xml --no-banner --exit-code 0
+    - gitleaks-to-codequality gitleaks-raw.json > gl-codequality-gitleaks.json
+    - rm -f gitleaks-raw.json
+    - gitleaks detect --source . $SCAN_ARGS --no-banner
+  artifacts:
+    when: always
+    reports:
+      junit: gitleaks.xml
+      codequality: gl-codequality-gitleaks.json
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

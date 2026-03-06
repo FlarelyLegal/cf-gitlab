@@ -7,8 +7,13 @@ executable-check:
       FAIL=0
       FILES=$(find . -name '*.sh' \
         -not -path '*/node_modules/*' -not -path '*/.git/*' | sort)
-      HOOKS="./optional/detect-secrets ./optional/enforce-branch-naming \
-        ./optional/block-file-extensions ./optional/enforce-commit-message"
+      HOOKS=""
+      for h in detect-secrets enforce-branch-naming \
+        block-file-extensions enforce-commit-message; do
+        if [ -f "./optional/$h" ]; then
+          HOOKS="$HOOKS ./optional/$h"
+        fi
+      done
       for f in $FILES $HOOKS; do
         if [ -x "$f" ]; then
           printf "  ✓ %s\n" "$f"

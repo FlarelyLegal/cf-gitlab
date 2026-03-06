@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""Convert tflint JSON output to GitLab Code Quality (CodeClimate) format.
+
+Usage:
+    tflint --format json ... | tflint-to-codequality > gl-codequality-tflint.json
+    tflint-to-codequality tflint-report.json > gl-codequality-tflint.json
+"""
+
+import hashlib
+import json
+import sys
+
+SEVERITY_MAP = {
+    "error": "critical",
+    "warning": "major",
+    "notice": "minor",
+    "info": "info",
+}
+
+
+def convert(tflint_data):
+    """Convert tflint JSON to CodeClimate format."""
+    issues = []
+
+    for issue in tflint_data.get("issues", []):
+        rule = issue.get("rule", {})
+        rng = issue.get("range", {})
+        filename = rng.get("filename", "unknown")
+        start_line = rng.get("start", {}).get("line", 1)
+        message = issue.get("message", "")
+        severity = SEVERITY_MAP.get(
+            rule.get("severity", "warning"), "major"
+        )
+
+        fingerprint = hashlib.md5(
+            f"{filename}:{start_line}:{rule.get('name', '')}:{message}".encode()
+        ).hexdigest()
+
+        issues.append(
+            {
+                "type": "issue",
+                "check_name": rule.get("name", "tflint"),
+                "description": message,
+                "categories": ["Style"],
+                "severity": severity,
+                "fingerprint": fingerprint,
+                "location": {
+                    "path": filename,
+                    "lines": {"begin": start_line},
+                },
+            }
+        )
+
+    for error in tflint_data.get("errors", []):
+        message = error.get("message", "tflint error")
+        severity = SEVERITY_MAP.get(
+            error.get("severity", "error"), "critical"
+        )
+
+        fingerprint = hashlib.md5(
+            f"error:{message}".encode()
+        ).hexdigest()
+
+        issues.append(
+            {
+                "type": "issue",
+                "check_name": "tflint-error",
+                "description": message,
+                "categories": ["Bug Risk"],
+                "severity": severity,
+                "fingerprint": fingerprint,
+                "location": {
+                    "path": ".",
+                    "lines": {"begin": 1},
+                },
+            }
+        )
+
+    return issues
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] != "-":
+        with open(sys.argv[1]) as f:
+            data = json.load(f)
+    else:
+        data = json.load(sys.stdin)
+
+    result = convert(data)
+    json.dump(result, sys.stdout, indent=2)
+    sys.stdout.write("\n")
+
+
+if __name__ == "__main__":
+    main()
