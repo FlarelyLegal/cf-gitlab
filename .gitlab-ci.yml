@@ -17,6 +17,10 @@ workflow:
     - if: $CI_COMMIT_BRANCH
     - if: $CI_COMMIT_TAG
 
+variables:
+  GITHUB_REPO: "FlarelyLegal/cf-gitlab"
+  GITLAB_COM_PROJECT_ID: "79915657"
+
 stages:
   - lint-fast
   - lint
