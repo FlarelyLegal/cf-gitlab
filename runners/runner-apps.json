@@ -9,6 +9,10 @@
         "name": "build-essential",
         "description": "GCC, G++, make — native compilation"
       },
+      {
+        "name": "ca-certificates",
+        "description": "TLS/SSL certificate authority bundle"
+      },
       { "name": "curl", "description": "HTTP client" },
       { "name": "wget", "description": "HTTP client (alt)" },
       { "name": "jq", "description": "JSON processor for CI scripts" },
@@ -18,6 +22,11 @@
         "name": "git",
         "description": "Version control (also installed by GitLab, but ensures latest)"
       },
+      { "name": "gnupg", "description": "GPG signing and verification" },
+      { "name": "make", "description": "Build automation tool" },
+      { "name": "mc", "description": "Midnight Commander file manager" },
+      { "name": "nano", "description": "Text editor" },
+      { "name": "patch", "description": "Apply patches to files" },
       { "name": "shellcheck", "description": "Shell script linter" },
       { "name": "python3", "description": "Python runtime" },
       { "name": "python3-pip", "description": "Python package manager" },
@@ -27,11 +36,37 @@
         "description": "YAML parsing for scripts (sync-certs, etc.)"
       },
       { "name": "rsync", "description": "File sync for deployments" },
+      { "name": "sudo", "description": "Privilege escalation" },
+      {
+        "name": "ssh",
+        "description": "Secure shell client and server (metapackage)"
+      },
       { "name": "tree", "description": "Directory listing for debug output" },
       { "name": "htop", "description": "System monitoring" },
       {
         "name": "screen",
         "description": "Terminal multiplexer for background tasks"
+      },
+      {
+        "name": "postfix",
+        "description": "Mail transfer agent for CI notifications"
+      },
+      { "name": "nftables", "description": "Packet filtering framework" },
+      { "name": "ufw", "description": "Uncomplicated firewall" }
+    ]
+  },
+
+  "gitlab_runner": {
+    "description": "GitLab Runner and helper images installed from the official GitLab repo.",
+    "packages": [
+      {
+        "name": "gitlab-runner",
+        "description": "GitLab CI/CD job executor",
+        "version": "18.9.0"
+      },
+      {
+        "name": "gitlab-runner-helper-images",
+        "description": "Pre-built helper images for runner jobs"
       }
     ]
   },
@@ -49,6 +84,22 @@
       { "name": "docker-compose-plugin", "description": "Docker Compose v2" }
     ],
     "post_install": "usermod -aG docker gitlab-runner"
+  },
+
+  "iac": {
+    "description": "Infrastructure-as-Code tools installed via apt repos.",
+    "packages": [
+      {
+        "name": "terraform",
+        "description": "HashiCorp IaC provisioning tool",
+        "version": "1.14.6"
+      },
+      {
+        "name": "tofu",
+        "description": "OpenTofu — open-source Terraform alternative",
+        "version": "1.11.5"
+      }
+    ]
   },
 
   "node": {
@@ -78,6 +129,10 @@
         "name": "markdownlint-cli2-formatter-junit",
         "description": "JUnit report formatter for markdownlint-cli2"
       },
+      {
+        "name": "markdownlint-cli2-formatter-codequality",
+        "description": "Code Quality report formatter for markdownlint-cli2"
+      },
       { "name": "jsonlint-cli", "description": "JSON linter/validator" },
       {
         "name": "git-cliff",
@@ -93,7 +148,18 @@
         "name": "codespell",
         "description": "Typo detection for code and docs"
       },
-      { "name": "PyYAML", "description": "YAML parser for Python scripts" }
+      { "name": "PyYAML", "description": "YAML parser for Python scripts" },
+      {
+        "name": "semgrep",
+        "description": "Static analysis / SAST scanner",
+        "version": "1.154.0"
+      },
+      { "name": "yamllint", "description": "YAML linter" },
+      { "name": "pytest", "description": "Python test framework" },
+      {
+        "name": "ruamel.yaml",
+        "description": "YAML parser with round-trip support"
+      }
     ]
   },
 
@@ -111,6 +177,63 @@
         "description": "GitLab release creation tool (required by release: keyword in CI)",
         "version": "0.24.0",
         "url": "https://gitlab.com/gitlab-org/release-cli"
+      },
+      {
+        "name": "gitleaks",
+        "description": "Secret detection scanner",
+        "version": "8.30.0",
+        "url": "https://github.com/gitleaks/gitleaks/releases"
+      },
+      {
+        "name": "hadolint",
+        "description": "Dockerfile linter",
+        "version": "2.14.0",
+        "url": "https://github.com/hadolint/hadolint/releases"
+      },
+      {
+        "name": "tflint",
+        "description": "Terraform linter",
+        "version": "0.61.0",
+        "url": "https://github.com/terraform-linters/tflint/releases"
+      },
+      {
+        "name": "tfsec",
+        "description": "Terraform security scanner (deprecated — migrating to Trivy)",
+        "version": "1.28.14",
+        "url": "https://github.com/aquasecurity/tfsec/releases"
+      }
+    ]
+  },
+
+  "scripts": {
+    "description": "Custom helper scripts installed to /usr/local/bin for CI report conversion. Source files live in runners/scripts/.",
+    "install_dir": "/usr/local/bin",
+    "source_dir": "scripts",
+    "packages": [
+      {
+        "name": "gitleaks-to-codequality",
+        "description": "Converts gitleaks JSON to GitLab Code Quality format",
+        "source": "scripts/gitleaks-to-codequality"
+      },
+      {
+        "name": "shellcheck-to-junit",
+        "description": "Converts shellcheck JSON to JUnit XML",
+        "source": "scripts/shellcheck-to-junit"
+      },
+      {
+        "name": "markdownlint-junit-config",
+        "description": "Ensures markdownlint-cli2 JUnit and Code Quality formatters are configured",
+        "source": "scripts/markdownlint-junit-config"
+      },
+      {
+        "name": "semgrep-to-codequality",
+        "description": "Converts semgrep JSON to GitLab Code Quality format",
+        "source": "scripts/semgrep-to-codequality"
+      },
+      {
+        "name": "tflint-to-codequality",
+        "description": "Converts tflint JSON to GitLab Code Quality format",
+        "source": "scripts/tflint-to-codequality"
       }
     ]
   }

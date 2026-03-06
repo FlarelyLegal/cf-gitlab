@@ -1,5 +1,7 @@
 # ─── ShellCheck ─────────────────────────────────────────────────────────────
 # Lint all shell scripts with shellcheck. Fails on any warning or error.
+# Produces a JUnit XML report for the MR test summary widget.
+# Requires: shellcheck, shellcheck-to-junit (python3 script) on the runner.
 shellcheck:
   stage: lint-fast
   script:
@@ -19,11 +21,21 @@ shellcheck:
           FAIL=1
         fi
       done
+
+      # Generate JUnit XML report
+      shellcheck --format=json $SCRIPTS > shellcheck-raw.json 2>/dev/null || true
+      shellcheck-to-junit shellcheck-raw.json $SCRIPTS > shellcheck.xml
+      rm -f shellcheck-raw.json
+
       if [ "$FAIL" -eq 1 ]; then
         printf "\nShellCheck found issues in one or more scripts.\n"
         exit 1
       fi
       printf "\nAll %s scripts passed.\n" "$COUNT"
+  artifacts:
+    when: always
+    reports:
+      junit: shellcheck.xml
   rules:
     - changes:
         - "**/*.sh"

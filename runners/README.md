@@ -54,27 +54,30 @@ ssh root@<LXC_IP> 'bash /tmp/gitlabrunner.sh'
 After any runner is registered, install the tools CI jobs need:
 
 ```bash
-scp runners/runner-apps.json runners/runner-apps.sh root@<LXC_IP>:/tmp/
+scp -r runners/runner-apps.json runners/runner-apps.sh runners/scripts root@<LXC_IP>:/tmp/
 ssh root@<LXC_IP> 'bash /tmp/runner-apps.sh'
 ```
 
 Use `update-runners.sh` to push tools to all runner hosts at once. The tool manifest
-(`runner-apps.json`) defines APT packages, Docker, Node.js, and npm globals.
+(`runner-apps.json`) defines everything installed on the runner: APT packages, GitLab Runner,
+Docker, IaC (Terraform/OpenTofu), Node.js, npm globals, pip packages, standalone binaries,
+and custom CI helper scripts.
 
 ## Scripts
 
-| Script              | Runs on       | Description                                                      |
-| ------------------- | ------------- | ---------------------------------------------------------------- |
-| `gitlabrunner.sh`   | GitLab LXC    | Co-located runner (creates token via Rails, registers, starts)   |
-| `runner-apps.sh`    | Runner host   | Installs CI tools from `runner-apps.json`                        |
-| `runner-apps.json`  | --            | Tool manifest (apt packages, Docker, Node.js, npm globals)       |
-| `update-runners.sh` | Local machine | Pushes `runner-apps.json` + `runner-apps.sh` to all runner hosts |
+| Script              | Runs on       | Description                                                                 |
+| ------------------- | ------------- | --------------------------------------------------------------------------- |
+| `gitlabrunner.sh`   | GitLab LXC    | Co-located runner (creates token via Rails, registers, starts)              |
+| `runner-apps.sh`    | Runner host   | Installs CI tools from `runner-apps.json`                                   |
+| `runner-apps.json`  | --            | Tool manifest (apt, runner, Docker, IaC, Node, npm, pip, binaries, scripts) |
+| `update-runners.sh` | Local machine | Pushes `runner-apps.json`, `runner-apps.sh`, and `scripts/` to all runners  |
 
 All scripts support `--dry-run`.
 
 ## Subdirectories
 
-| Directory                           | Description                                                                  |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| [`container/`](container/README.md) | LXC container provisioning for Proxmox (Docker, Dockge, GitLab Runner, etc.) |
-| [`host/`](host/README.md)           | Deploy runner to an existing host (local orchestrator + remote setup)        |
+| Directory                           | Description                                                                      |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| [`container/`](container/README.md) | LXC container provisioning for Proxmox (Docker, Dockge, GitLab Runner, etc.)     |
+| [`host/`](host/README.md)           | Deploy runner to an existing host (local orchestrator + remote setup)            |
+| `scripts/`                          | CI helper scripts installed to `/usr/local/bin` (report format converters, etc.) |

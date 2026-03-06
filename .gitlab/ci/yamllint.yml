@@ -1,0 +1,17 @@
+# ─── yamllint ────────────────────────────────────────────────────────────────
+# Lint YAML files for structural issues beyond what Prettier catches
+# (duplicate keys, truthy values, indentation, etc.).
+# Config in .yamllint.yml or .yamllint.yaml at repo root.
+# Requires: yamllint on the runner.
+yamllint:
+  stage: lint
+  allow_failure: true
+  script:
+    - printf "yamllint %s\n" "$(yamllint --version)"
+    - yamllint --strict .
+  rules:
+    - changes:
+        - "**/*.yml"
+        - "**/*.yaml"
+        - ".yamllint.yml"
+        - ".yamllint.yaml"

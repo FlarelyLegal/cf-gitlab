@@ -1,0 +1,24 @@
+# ─── MR Description Check ────────────────────────────────────────────────────
+# Require a non-empty description on merge requests. Encourages devs to
+# explain the "why" behind every change.
+# Runs only on merge request pipelines; no tools required.
+mr-description-check:
+  stage: .pre
+  script:
+    - |
+      if [ -z "${CI_MERGE_REQUEST_DESCRIPTION}" ] || [ "${CI_MERGE_REQUEST_DESCRIPTION}" = "null" ]; then
+        printf '\n'
+        printf '  ========================================\n'
+        printf '  MR description is empty\n'
+        printf '  ========================================\n'
+        printf '\n'
+        printf '  Please add a description explaining what\n'
+        printf '  this MR does and why.\n'
+        printf '\n'
+        printf '  ========================================\n'
+        printf '\n'
+        exit 1
+      fi
+      printf "MR description present (%s chars).\n" "${#CI_MERGE_REQUEST_DESCRIPTION}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"

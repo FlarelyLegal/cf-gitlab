@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Convert shellcheck JSON output to JUnit XML.
+
+Usage:
+    shellcheck --format=json *.sh > raw.json
+    python3 shellcheck-to-junit.py raw.json script1.sh script2.sh > shellcheck.xml
+"""
+
+import html
+import json
+import sys
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: shellcheck-to-junit.py <json-file> [script ...]", file=sys.stderr)
+        sys.exit(1)
+
+    json_file = sys.argv[1]
+    all_scripts = sys.argv[2:]
+
+    with open(json_file) as f:
+        try:
+            findings = json.load(f)
+        except Exception:
+            findings = []
+
+    files = {}
+    for item in findings:
+        files.setdefault(item.get("file", "unknown"), []).append(item)
+
+    total = len(all_scripts)
+    failed = len([s for s in all_scripts if s in files])
+
+    print('<?xml version="1.0" encoding="UTF-8"?>')
+    print("<testsuites>")
+    print('  <testsuite name="ShellCheck" tests="%d" failures="%d">' % (total, failed))
+    for script in all_scripts:
+        name = html.escape(script)
+        if script in files:
+            issues = files[script]
+            parts = [
+                "SC%s (line %s): %s" % (i["code"], i["line"], i["message"])
+                for i in issues
+            ]
+            msg = html.escape("\n".join(parts))
+            print('    <testcase classname="ShellCheck" name="%s">' % name)
+            print(
+                '      <failure message="%d issue(s)">%s</failure>' % (len(issues), msg)
+            )
+            print("    </testcase>")
+        else:
+            print('    <testcase classname="ShellCheck" name="%s" />' % name)
+    print("  </testsuite>")
+    print("</testsuites>")
+
+
+if __name__ == "__main__":
+    main()
