@@ -45,6 +45,7 @@ include:
       - "/auto-label.yml"
       - "/deploy.yml"
       - "/release.yml"
+      - "/semgrep.yml"
 
 # ─── Unit Tests ──────────────────────────────────────────────────────────────
 
