@@ -1,0 +1,39 @@
+x-depends_on: &a1
+  - postgres
+networks:
+  glitchtip-net:
+    internal: true
+  caddy:
+    external: true
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    restart: unless-stopped
+    networks:
+      - glitchtip-net
+    volumes:
+      - ../data/glitchtip/pg-data:/var/lib/postgresql
+  web:
+    image: glitchtip/glitchtip:6
+    depends_on: *a1
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres@postgres:5432/postgres
+      VALKEY_URL: ""
+      SERVER_ROLE: all_in_one
+    entrypoint: /entrypoint.sh
+    restart: unless-stopped
+    networks:
+      - caddy
+      - glitchtip-net
+    volumes:
+      - ../data/glitchtip/uploads:/code/uploads
+      - ./entrypoint.sh:/entrypoint.sh:ro
+    labels:
+      caddy: glitchtip.gitlab.flarelylegal.com
+      caddy.tls:
+        /etc/letsencrypt/live/glitchtip.gitlab.flarelylegal.com/fullchain.pem
+        /etc/letsencrypt/live/glitchtip.gitlab.flarelylegal.com/privkey.pem
+      caddy.reverse_proxy: "{{upstreams 8000}}"

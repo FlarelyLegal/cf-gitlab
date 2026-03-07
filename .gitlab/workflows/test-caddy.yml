@@ -1,0 +1,42 @@
+# ─── BATS Tests: Caddy ──────────────────────────────────────────────────────
+# Unit tests for the entrypoint script and integration tests that build and
+# run the custom Caddy Docker container.  Requires bats, bats-assert,
+# bats-support installed on the runner (already present at /usr/lib/bats/).
+#
+# Path-filtered: only runs when relevant files change.
+# Always runs on tags as a safety gate before build-caddy.
+# ─────────────────────────────────────────────────────────────────────────────
+
+test-caddy-entrypoint:
+  stage: test
+  script:
+    - bats tests/caddy/entrypoint.bats
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - optional/glitchtip/caddy/entrypoint.sh
+        - tests/caddy/entrypoint.bats
+        - tests/caddy/test_helper.bash
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        - optional/glitchtip/caddy/entrypoint.sh
+        - tests/caddy/entrypoint.bats
+        - tests/caddy/test_helper.bash
+
+test-caddy-container:
+  stage: test
+  script:
+    - bats tests/caddy/container-smoke.bats
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - optional/glitchtip/caddy/**
+        - tests/caddy/container-smoke.bats
+        - tests/caddy/test_helper.bash
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        - optional/glitchtip/caddy/**
+        - tests/caddy/container-smoke.bats
+        - tests/caddy/test_helper.bash

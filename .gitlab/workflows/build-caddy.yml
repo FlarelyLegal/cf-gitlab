@@ -1,0 +1,30 @@
+# ─── Docker Build & Push: Caddy ─────────────────────────────────────────────
+# Build the custom Caddy image (Cloudflare DNS + Docker Proxy plugins) and
+# push to both the self-hosted and gitlab.com container registries on tagged
+# releases.  Tags: v1.0.0 → :1.0.0 + :latest
+# --provenance=false avoids attestation manifests that break the GitLab
+# registry UI ("invalid tag missing manifest digest").
+#
+# Required CI/CD variables:
+#   gitlab_com_release_token  gitlab.com PAT with write_registry scope
+# ─────────────────────────────────────────────────────────────────────────────
+build-caddy:
+  stage: build
+  variables:
+    SELF_IMAGE: "$CI_REGISTRY_IMAGE/caddy"
+    COM_IMAGE: "registry.gitlab.com/taslabs-net/gitlab-self-hosted/caddy"
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker login -u "oauth2" -p "$gitlab_com_release_token" registry.gitlab.com
+    - docker buildx build
+      --provenance=false
+      --platform linux/amd64,linux/arm64
+      -t "$SELF_IMAGE:${CI_COMMIT_TAG#v}"
+      -t "$SELF_IMAGE:latest"
+      -t "$COM_IMAGE:${CI_COMMIT_TAG#v}"
+      -t "$COM_IMAGE:latest"
+      --push optional/glitchtip/caddy
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      changes:
+        - "optional/glitchtip/caddy/**"

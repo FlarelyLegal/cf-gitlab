@@ -201,6 +201,12 @@
         "description": "Terraform security scanner (deprecated — migrating to Trivy)",
         "version": "1.28.14",
         "url": "https://github.com/aquasecurity/tfsec/releases"
+      },
+      {
+        "name": "taplo",
+        "description": "TOML formatter and linter",
+        "version": "0.10.0",
+        "url": "https://github.com/tamasfe/taplo/releases"
       }
     ]
   },
@@ -219,6 +225,11 @@
         "name": "shellcheck-to-junit",
         "description": "Converts shellcheck JSON to JUnit XML",
         "source": "scripts/shellcheck-to-junit"
+      },
+      {
+        "name": "shellcheck-to-codequality",
+        "description": "Converts shellcheck JSON to GitLab Code Quality format",
+        "source": "scripts/shellcheck-to-codequality"
       },
       {
         "name": "markdownlint-junit-config",

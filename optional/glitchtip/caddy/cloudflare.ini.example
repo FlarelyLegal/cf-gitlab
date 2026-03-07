@@ -1,0 +1,10 @@
+# Cloudflare credentials for Certbot DNS-01 challenges
+#
+# Option 1: Scoped API Token (recommended)
+# Create at https://dash.cloudflare.com/profile/api-tokens
+# Permissions: Zone > DNS > Edit
+# dns_cloudflare_api_token = YOUR_SCOPED_TOKEN_HERE
+#
+# Option 2: Global API Key (less secure, not recommended)
+# dns_cloudflare_email = you@example.com
+# dns_cloudflare_api_key = YOUR_GLOBAL_API_KEY_HERE

@@ -1,0 +1,132 @@
+# ─── GlitchTip Error Tracking ────────────────────────────────────────────────
+# Self-hosted Sentry-compatible error tracking for GitLab projects.
+# GitLab integration: Project > Settings > Monitor > Error Tracking
+#   Backend: GlitchTip
+#   Sentry API URL: http://<host-ip>:${GLITCHTIP_PORT:-5004}
+# Dockge web UI: http://<host-ip>:5001
+#
+# Network: PostgreSQL and Redis only talk to GlitchTip over an internal
+#          Docker network (glitchtip-net). Nothing is exposed to the host
+#          except the web service on ${GLITCHTIP_PORT:-5004}.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+# ─────────────────────────────────────────────────────────────────────────────
+
+networks:
+  glitchtip-net:
+    driver: bridge
+    internal: true
+  glitchtip-gw:
+    driver: bridge
+
+volumes:
+  pg-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: glitchtip-postgres
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - glitchtip-net
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+        reservations:
+          memory: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-glitchtip}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: glitchtip-redis
+    restart: unless-stopped
+    networks:
+      - glitchtip-net
+    expose:
+      - "6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128m
+        reservations:
+          memory: 64m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  web:
+    image: glitchtip/glitchtip:${GLITCHTIP_VERSION:-v4.1}
+    container_name: glitchtip-web
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - glitchtip-net
+      - glitchtip-gw
+    ports:
+      - "${GLITCHTIP_PORT:-5004}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+        reservations:
+          memory: 256m
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://localhost:8080/_health/",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    image: glitchtip/glitchtip:${GLITCHTIP_VERSION:-v4.1}
+    container_name: glitchtip-worker
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - glitchtip-net
+    command: ./bin/run-celery-with-beat.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512m
+        reservations:
+          memory: 128m

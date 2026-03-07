@@ -1,3 +1,6 @@
+# Agent instructions (local only)
+.ai/
+
 # Secrets / environment files
 .env
 *.env
