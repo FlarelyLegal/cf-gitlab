@@ -1,0 +1,24 @@
+networks:
+  caddy:
+    external: true
+
+services:
+  caddy:
+    image: registry.gitlab.com/taslabs-net/gitlab-self-hosted/caddy:${CADDY_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443/tcp"
+      - "443:443/udp"
+      - "5003:2019"
+    env_file: .env
+    networks:
+      - caddy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../data/caddy/config:/config
+      - ../data/caddy/acme:/etc/letsencrypt
+      - ../data/caddy/www:/srv
+      - ./cloudflare.ini:/etc/certbot/cloudflare.ini:ro
+    labels:
+      caddy.email: ${ACME_EMAIL}

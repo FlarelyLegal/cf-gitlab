@@ -9,12 +9,13 @@ Cloudflare Worker (`gitlab-cdn/`) provides CDN caching.
 
 ## Pipeline
 
-Defined in `.gitlab-ci.yml` with five stages: `lint-fast`, `lint`, `test`,
-`deploy`, `release`.
+Defined in `.gitlab-ci.yml` with six stages: `lint-fast`, `lint`, `test`,
+`build`, `deploy`, `release`.
 
-All linting and quality jobs come from the shared
-`flarely-legal/ci-templates` project via `include:`. The only locally-defined
-job is `cdn:test`, which runs Vitest on the CDN Worker.
+Most linting and quality jobs come from the `flarely-legal/ci-templates`
+CI/CD Catalog via `include: component:` (pinned to `@1.0.0`). Deploy and
+release jobs still use the legacy `include: project:` format. The only
+locally-defined job is `cdn:test`, which runs Vitest on the CDN Worker.
 
 ## Stages
 
@@ -23,6 +24,7 @@ job is `cdn:test`, which runs Vitest on the CDN Worker.
 | `lint-fast` | Quick shell checks (shfmt, shellcheck, printf-check, executable-check)                          |
 | `lint`      | Heavier linters with artifacts (prettier, markdownlint, yamllint, codespell, gitleaks, semgrep) |
 | `test`      | Unit tests (`cdn:test` runs Vitest on `gitlab-cdn/`)                                            |
+| `build`     | Docker image builds (Caddy custom image pushed to container registry)                           |
 | `deploy`    | Push/mirror to external targets                                                                 |
 | `release`   | Create release objects on GitLab/GitHub                                                         |
 
@@ -31,13 +33,17 @@ job is `cdn:test`, which runs Vitest on the CDN Worker.
 Shell executors on Debian trixie. Runner tools are installed system-wide via
 `runners/runner-apps.sh` from the manifest in `runners/runner-apps.json`.
 
-## Included Templates
+## Included Components
 
-From `flarely-legal/ci-templates` (ref: `main`):
+From `flarely-legal/ci-templates` CI/CD Catalog (`@1.0.0`):
 
-- shellcheck, shfmt, prettier, markdownlint, codespell
-- printf-check, executable-check, yamllint, gitleaks, semgrep
-- mr-description-check, auto-label, deploy, release
+- auto-label, mr-description-check
+- shellcheck, shfmt, printf-check, executable-check
+- prettier, markdownlint, codespell, yamllint, gitleaks, semgrep
+
+Legacy `include: project:` (not yet migrated to catalog components):
+
+- deploy (mirror-github), release
 
 ## Workflow Rules
 

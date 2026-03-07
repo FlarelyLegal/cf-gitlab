@@ -25,27 +25,33 @@ stages:
   - lint-fast
   - lint
   - test
+  - build
   - deploy
   - release
 
 include:
+  # CI/CD Catalog components (flarely-legal/ci-templates v1.0.0)
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/auto-label@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/mr-description-check@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shellcheck@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shfmt@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/printf-check@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/executable-check@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/prettier@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/markdownlint@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/codespell@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/yamllint@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/gitleaks@v1.0.0
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/semgrep@v1.0.0
+  # Legacy includes (deploy + release not yet migrated to components)
   - project: "flarely-legal/ci-templates"
     ref: main
     file:
-      - "/shellcheck.yml"
-      - "/shfmt.yml"
-      - "/prettier.yml"
-      - "/markdownlint.yml"
-      - "/codespell.yml"
-      - "/printf-check.yml"
-      - "/executable-check.yml"
-      - "/yamllint.yml"
-      - "/gitleaks.yml"
-      - "/mr-description-check.yml"
-      - "/auto-label.yml"
       - "/deploy.yml"
       - "/release.yml"
-      - "/semgrep.yml"
+  # Local workflows
+  - local: ".gitlab/workflows/test-caddy.yml"
+  - local: ".gitlab/workflows/build-caddy.yml"
 
 # ─── Unit Tests ──────────────────────────────────────────────────────────────
 
