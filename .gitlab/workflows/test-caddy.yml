@@ -26,8 +26,17 @@ test-caddy-entrypoint:
 
 test-caddy-container:
   stage: test
+  variables:
+    CADDY_TEST_IMAGE: caddy-test:bats
+    CADDY_CACHE_IMAGE: "$CI_REGISTRY_IMAGE/caddy:buildcache"
   script:
-    - bats tests/caddy/container-smoke.bats
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker buildx build
+      --cache-from "type=registry,ref=$CADDY_CACHE_IMAGE"
+      --load
+      -t "$CADDY_TEST_IMAGE"
+      optional/glitchtip/caddy
+    - CADDY_TEST_IMAGE="$CADDY_TEST_IMAGE" bats tests/caddy/container-smoke.bats
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

@@ -5,12 +5,15 @@
 load test_helper
 
 CONTAINER_NAME="caddy-test-$$"
-IMAGE_NAME="caddy-test:bats"
+IMAGE_NAME="${CADDY_TEST_IMAGE:-caddy-test:bats}"
 PROJECT_ROOT="${BATS_TEST_DIRNAME}/../../optional/glitchtip/caddy"
 DOCKER_SOCK="/var/run/docker.sock"
 
 setup_file() {
-  docker build -t "$IMAGE_NAME" "$PROJECT_ROOT"
+  # Skip build if image was pre-built by CI (CADDY_TEST_IMAGE is set)
+  if [ -z "${CADDY_TEST_IMAGE:-}" ]; then
+    docker build -t "$IMAGE_NAME" "$PROJECT_ROOT"
+  fi
 }
 
 teardown_file() {
