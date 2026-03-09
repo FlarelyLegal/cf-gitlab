@@ -30,4 +30,4 @@ printf-check:
   rules:
     - changes:
         - "**/*.sh"
-        - "optional/*"
+        - "hooks/*"

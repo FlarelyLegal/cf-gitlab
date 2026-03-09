@@ -4,15 +4,17 @@
 
 All scripts support `--dry-run` to preview changes without applying them.
 
-| Script          | Runs on | Description                                                  |
-| --------------- | ------- | ------------------------------------------------------------ |
-| `deploy.sh`     | local   | Pushes secrets + scripts to LXC, executes `setup.sh`         |
-| `setup.sh`      | LXC     | 11-step GitLab CE install (packages, TLS, nginx, R2, crons)  |
-| `validate.sh`   | local   | Read-only check of .env, SSH, DNS, R2, OIDC, HTTPS           |
-| `ssh-config.sh` | local   | Configures `~/.ssh/config` for git + admin access via tunnel |
-| `sso-only.sh`   | LXC     | SSO lockdown ([details](sso-only.md))                        |
-| `motd.sh`       | LXC     | Sets `/etc/motd` with instance info                          |
-| `webide.sh`     | local   | Web IDE extension host ([details](webide.md))                |
+| Script                | Runs on | Description                                                  |
+| --------------------- | ------- | ------------------------------------------------------------ |
+| `deploy.sh`           | local   | Pushes secrets + scripts to LXC, executes `setup.sh`         |
+| `setup.sh`            | LXC     | 11-step GitLab CE install (packages, TLS, nginx, R2, crons)  |
+| `validate.sh`         | local   | Read-only check of .env, SSH, DNS, R2, OIDC, HTTPS           |
+| `ssh-config.sh`       | local   | Configures `~/.ssh/config` for git + admin access via tunnel |
+| `sso-only.sh`         | LXC     | SSO lockdown ([details](sso-only.md))                        |
+| `motd.sh`             | LXC     | Sets `/etc/motd` with instance info                          |
+| `webide.sh`           | local   | Web IDE extension host ([details](webide.md))                |
+| `deploy-glitchtip.sh` | local   | Deploy GlitchTip stack to target host                        |
+| `deploy-kroki.sh`     | local   | Deploy Kroki diagram stack to target host                    |
 
 ## Additional Docs
 

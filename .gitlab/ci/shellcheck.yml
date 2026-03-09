@@ -39,4 +39,4 @@ shellcheck:
   rules:
     - changes:
         - "**/*.sh"
-        - "optional/*"
+        - "hooks/*"

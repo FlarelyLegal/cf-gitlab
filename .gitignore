@@ -14,6 +14,9 @@ sshkeys.txt
 # OS
 .DS_Store
 
+# Obsidian
+.obsidian/
+
 # Node
 node_modules/
 

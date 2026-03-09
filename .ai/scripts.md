@@ -10,16 +10,17 @@ Scripts in `cloudflare/` configure Cloudflare API resources. Scripts in
 
 ### scripts/
 
-| Script            | Purpose                                        |
-| ----------------- | ---------------------------------------------- |
-| `deploy.sh`       | Push config/scripts to LXC, run setup remotely |
-| `setup.sh`        | 11-step GitLab CE install (runs ON the LXC)    |
-| `validate.sh`     | Read-only health/config validation             |
-| `ssh-config.sh`   | Configure local SSH for tunnel access          |
-| `sso-only.sh`     | Lock down to SSO-only login                    |
-| `motd.sh`         | Set LXC MOTD with instance info                |
-| `webide.sh`       | Web IDE extension host setup                   |
-| `deploy-kroki.sh` | Deploy Kroki diagram stack                     |
+| Script                | Purpose                                        |
+| --------------------- | ---------------------------------------------- |
+| `deploy.sh`           | Push config/scripts to LXC, run setup remotely |
+| `setup.sh`            | 11-step GitLab CE install (runs ON the LXC)    |
+| `validate.sh`         | Read-only health/config validation             |
+| `ssh-config.sh`       | Configure local SSH for tunnel access          |
+| `sso-only.sh`         | Lock down to SSO-only login                    |
+| `motd.sh`             | Set LXC MOTD with instance info                |
+| `webide.sh`           | Web IDE extension host setup                   |
+| `deploy-kroki.sh`     | Deploy Kroki diagram stack                     |
+| `deploy-glitchtip.sh` | Deploy GlitchTip error tracking stack          |
 
 ### runners/
 
@@ -62,12 +63,12 @@ environment.
 The `.env.example` file documents every required variable with comments.
 `shared.env.example` covers variables shared across multiple scripts.
 
-## Server Hooks (optional/)
+## Hooks (hooks/)
 
 Shell hooks (no `.sh` extension) are pre-receive hooks installed on the
 GitLab server. Ruby hooks (`.rb`) are file hooks triggered by GitLab events.
 
-- `detect-secrets` — blocks pushes containing leaked credentials (94 patterns)
+- `detect-secrets` — blocks pushes containing leaked credentials (115+ patterns)
 - `enforce-branch-naming` — branch naming convention enforcement
 - `enforce-commit-message` — Conventional Commits enforcement
 - `enforce-max-file-size` — 10 MB file size limit

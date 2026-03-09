@@ -6,10 +6,11 @@ Docker Compose services that run alongside GitLab. Each stack lives in its own s
 
 ## Stacks
 
-| Directory    | Service                                                                     | Runs on    |
-| ------------ | --------------------------------------------------------------------------- | ---------- |
-| `glitchtip/` | Sentry-compatible error tracking (GitLab Error Tracking integration)        | GitLab LXC |
-| `kroki/`     | Diagram renderer (PlantUML, Mermaid, GraphViz, BPMN, Excalidraw, D2, C4...) | GitLab LXC |
+| Directory    | Service                                                                       | Runs on    |
+| ------------ | ----------------------------------------------------------------------------- | ---------- |
+| `caddy/`     | Reverse proxy with Docker label auto-discovery, Certbot DNS-01 via Cloudflare | GitLab LXC |
+| `glitchtip/` | Sentry-compatible error tracking with OIDC support                            | GitLab LXC |
+| `kroki/`     | Diagram renderer (PlantUML, Mermaid, GraphViz, BPMN, Excalidraw, D2, C4...)   | GitLab LXC |
 
 ## Deployment
 

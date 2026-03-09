@@ -1,8 +1,6 @@
-[root](../README.md) / **optional**
+[root](../README.md) / **hooks**
 
-# Optional Hooks
-
-These hooks are **optional** and not required for core GitLab functionality.
+# Hooks
 
 ## File Hooks
 
@@ -17,7 +15,7 @@ These hooks are **optional** and not required for core GitLab functionality.
 
 ```bash
 # Install
-cp optional/<hook>.rb /opt/gitlab/embedded/service/gitlab-rails/file_hooks/
+cp hooks/<hook>.rb /opt/gitlab/embedded/service/gitlab-rails/file_hooks/
 chmod +x /opt/gitlab/embedded/service/gitlab-rails/file_hooks/<hook>.rb
 
 # Validate
@@ -49,23 +47,23 @@ Hooks exit silently if their env vars are not set.
 >
 > Then run `gitlab-ctl reconfigure`.
 
-| File                      | Type        | Action                                                                                              |
-| ------------------------- | ----------- | --------------------------------------------------------------------------------------------------- |
-| `enforce-branch-naming`   | pre-receive | Rejects branches not matching `feature/`, `fix/`, `hotfix/`, `release/`, `chore/`, `docs/`          |
-| `block-file-extensions`   | pre-receive | Rejects pushes containing binaries, archives, secrets (.exe, .zip, .jar, .pem, etc.)                |
-| `enforce-commit-message`  | pre-receive | Requires Conventional Commits (`feat:`, `fix:`, `docs:`, etc.). Merge commits exempt.               |
-| `enforce-max-file-size`   | pre-receive | Rejects individual files exceeding 10 MB. Suggests Git LFS or object storage.                       |
-| `block-submodule-changes` | pre-receive | Rejects pushes that add or modify `.gitmodules`. Submodules are not used in this environment.       |
-| `detect-secrets`          | pre-receive | Scans diffs for 94 secret patterns (API keys, private keys, tokens, connection strings). See below. |
+| File                      | Type        | Action                                                                                                |
+| ------------------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| `enforce-branch-naming`   | pre-receive | Rejects branches not matching `feature/`, `fix/`, `hotfix/`, `release/`, `chore/`, `docs/`            |
+| `block-file-extensions`   | pre-receive | Rejects pushes containing binaries, archives, secrets (.exe, .zip, .jar, .pem, etc.)                  |
+| `enforce-commit-message`  | pre-receive | Requires Conventional Commits (`feat:`, `fix:`, `docs:`, etc.). Merge commits exempt.                 |
+| `enforce-max-file-size`   | pre-receive | Rejects individual files exceeding 10 MB. Suggests Git LFS or object storage.                         |
+| `block-submodule-changes` | pre-receive | Rejects pushes that add or modify `.gitmodules`. Submodules are not used in this environment.         |
+| `detect-secrets`          | pre-receive | Scans diffs for 115+ secret patterns (API keys, private keys, tokens, connection strings). See below. |
 
 Edit the arrays/patterns at the top of each script to customize. `enforce-branch-naming` exempts `main` and `master`.
 
 ```bash
 # Install (global, all repos)
 mkdir -p /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d
-cp optional/enforce-branch-naming optional/block-file-extensions \
-   optional/enforce-commit-message optional/enforce-max-file-size \
-   optional/block-submodule-changes optional/detect-secrets \
+cp hooks/enforce-branch-naming hooks/block-file-extensions \
+   hooks/enforce-commit-message hooks/enforce-max-file-size \
+   hooks/block-submodule-changes hooks/detect-secrets \
    /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/
 chmod +x /var/opt/gitlab/gitaly/custom_hooks/pre-receive.d/*
 chown -R git:git /var/opt/gitlab/gitaly/custom_hooks
@@ -73,19 +71,22 @@ chown -R git:git /var/opt/gitlab/gitaly/custom_hooks
 
 ### detect-secrets
 
-Secret Push Protection for GitLab CE. Scans only the diff (added lines) for high-confidence patterns, covering 40+ providers:
+Secret Push Protection for GitLab CE. Scans only the diff (added lines) for high-confidence patterns, covering 50+ providers:
 
 | Category           | Providers                                                                                          |
 | ------------------ | -------------------------------------------------------------------------------------------------- |
 | Private keys       | RSA, DSA, EC, OpenSSH, PGP, PKCS8                                                                  |
 | Cloud providers    | AWS, GCP/Firebase, Azure, Cloudflare (current + new scannable format), DigitalOcean                |
-| AI providers       | OpenAI, Anthropic, Hugging Face, Replicate, Groq                                                   |
+| AI providers       | OpenAI, Anthropic, Hugging Face, Replicate, Groq, Cursor, Cohere, Fireworks AI, Perplexity         |
 | Git platforms      | GitHub (PAT, OAuth, fine-grained, app), GitLab (PAT, runner, deploy, trigger, 8 more)              |
+| CI/CD platforms    | Buildkite, CircleCI, Netlify, Fly.io, Railway, Render, Tailscale                                   |
 | Communication      | Slack (bot, user, app, webhook, config), Discord (bot, webhook), Telegram                          |
 | Payment            | Stripe (live secret, restricted, publishable)                                                      |
-| Infrastructure     | HashiCorp Vault/Terraform, Doppler, Pulumi, PlanetScale, Supabase, Grafana, Sentry                 |
+| Infrastructure     | HashiCorp Vault/Terraform, Doppler, Pulumi, PlanetScale, Supabase, Grafana, Sentry, Pinecone       |
+| Secret management  | 1Password, Age                                                                                     |
 | Package registries | npm, PyPI, RubyGems, Docker                                                                        |
 | Email/messaging    | SendGrid, Mailgun, Twilio                                                                          |
+| SaaS/productivity  | Notion, Figma, Contentful, Airtable, Datadog                                                       |
 | Other              | Heroku, Postman, Linear, Shopify, Twitch, Twitter/X                                                |
 | Generic            | Database connection strings, passwords in URLs, env var assignments (PASSWORD, SECRET, TOKEN, etc) |
 

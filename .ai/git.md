@@ -44,7 +44,7 @@ Note: branch prefix is `feature/` but commit type is `feat`.
 
 ## Server-Enforced Rules
 
-The GitLab instance runs pre-receive server hooks (in `optional/`) that
+The GitLab instance runs pre-receive server hooks (in `hooks/`) that
 **reject pushes at the server level** if they violate any of the following.
 These are not advisory — the push will fail.
 
