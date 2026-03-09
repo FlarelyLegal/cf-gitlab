@@ -6,7 +6,7 @@ load test_helper
 
 CONTAINER_NAME="caddy-test-$$"
 IMAGE_NAME="${CADDY_TEST_IMAGE:-caddy-test:bats}"
-PROJECT_ROOT="${BATS_TEST_DIRNAME}/../../optional/glitchtip/caddy"
+PROJECT_ROOT="${BATS_TEST_DIRNAME}/../../stacks/caddy"
 DOCKER_SOCK="/var/run/docker.sock"
 
 setup_file() {

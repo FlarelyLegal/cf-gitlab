@@ -1,10 +1,10 @@
 #!/usr/bin/env bats
-# Unit tests for optional/glitchtip/caddy/entrypoint.sh
+# Unit tests for stacks/caddy/entrypoint.sh
 # Runs the entrypoint with stub commands to verify env var handling and cron setup.
 
 load test_helper
 
-ENTRYPOINT="${BATS_TEST_DIRNAME}/../../optional/glitchtip/caddy/entrypoint.sh"
+ENTRYPOINT="${BATS_TEST_DIRNAME}/../../stacks/caddy/entrypoint.sh"
 
 setup() {
   TEST_DIR="$(mktemp -d)"

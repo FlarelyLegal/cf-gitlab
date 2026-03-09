@@ -30,25 +30,21 @@ stages:
   - release
 
 include:
-  # CI/CD Catalog components (flarely-legal/ci-templates v1.0.0)
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/auto-label@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/mr-description-check@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shellcheck@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shfmt@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/printf-check@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/executable-check@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/prettier@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/markdownlint@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/codespell@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/yamllint@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/gitleaks@v1.0.0
-  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/semgrep@v1.0.0
-  # Legacy includes (deploy + release not yet migrated to components)
-  - project: "flarely-legal/ci-templates"
-    ref: main
-    file:
-      - "/deploy.yml"
-      - "/release.yml"
+  # CI/CD Catalog components (flarely-legal/ci-templates)
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/auto-label@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/mr-description-check@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shellcheck@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/shfmt@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/printf-check@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/executable-check@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/prettier@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/markdownlint@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/codespell@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/yamllint@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/gitleaks@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/semgrep@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/mirror-github@~latest
+  - component: gitlab.flarelylegal.com/flarely-legal/ci-templates/gitlab-release@~latest
   # Local workflows
   - local: ".gitlab/workflows/test-caddy.yml"
   - local: ".gitlab/workflows/build-caddy.yml"

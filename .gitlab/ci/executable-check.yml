@@ -10,8 +10,8 @@ executable-check:
       HOOKS=""
       for h in detect-secrets enforce-branch-naming \
         block-file-extensions enforce-commit-message; do
-        if [ -f "./optional/$h" ]; then
-          HOOKS="$HOOKS ./optional/$h"
+        if [ -f "./hooks/$h" ]; then
+          HOOKS="$HOOKS ./hooks/$h"
         fi
       done
       for f in $FILES $HOOKS; do
@@ -30,4 +30,4 @@ executable-check:
   rules:
     - changes:
         - "**/*.sh"
-        - "optional/*"
+        - "hooks/*"

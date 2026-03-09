@@ -52,7 +52,15 @@
         "description": "Mail transfer agent for CI notifications"
       },
       { "name": "nftables", "description": "Packet filtering framework" },
-      { "name": "ufw", "description": "Uncomplicated firewall" }
+      { "name": "ufw", "description": "Uncomplicated firewall" },
+      { "name": "bats", "description": "Bash Automated Testing System" },
+      { "name": "bats-assert", "description": "Bats assertion library" },
+      { "name": "bats-file", "description": "Bats file-system assertions" },
+      { "name": "bats-support", "description": "Bats support library" },
+      {
+        "name": "parallel",
+        "description": "GNU parallel for concurrent CI tasks"
+      }
     ]
   },
 
@@ -137,6 +145,10 @@
       {
         "name": "git-cliff",
         "description": "Changelog generator from Conventional Commits"
+      },
+      {
+        "name": "obsidian-headless",
+        "description": "Headless Obsidian CLI for vault operations"
       }
     ]
   },
@@ -159,6 +171,22 @@
       {
         "name": "ruamel.yaml",
         "description": "YAML parser with round-trip support"
+      },
+      {
+        "name": "ansible-core",
+        "description": "Ansible automation engine"
+      },
+      {
+        "name": "ansible-lint",
+        "description": "Ansible playbook linter"
+      },
+      { "name": "black", "description": "Python code formatter" },
+      { "name": "isort", "description": "Python import sorter" },
+      { "name": "mypy", "description": "Python static type checker" },
+      { "name": "ruff", "description": "Fast Python linter and formatter" },
+      {
+        "name": "python-dotenv",
+        "description": "Load environment variables from .env files"
       }
     ]
   },
@@ -169,7 +197,7 @@
       {
         "name": "shfmt",
         "description": "Shell script formatter (Go binary from GitHub releases)",
-        "version": "3.12.0",
+        "version": "3.13.0",
         "url": "https://github.com/mvdan/sh/releases"
       },
       {

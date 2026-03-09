@@ -558,8 +558,8 @@ See [`gitlab-cdn/deploy.md`](gitlab-cdn/deploy.md) for deployment steps and
 ### Step 11: Install Hooks (optional)
 
 Install server hooks (pre-receive) and file hooks for push policy enforcement and event
-notifications. See [`optional/install.md`](optional/install.md) for installation steps and
-[`optional/README.md`](optional/README.md) for what each hook does.
+notifications. See [`hooks/install.md`](hooks/install.md) for installation steps and
+[`hooks/README.md`](hooks/README.md) for what each hook does.
 
 ### Step 12: Web IDE Extension Host (optional)
 
@@ -577,7 +577,7 @@ For detailed documentation on each script, see the README in each directory:
 - [`stacks/README.md`](stacks/README.md) — Docker Compose stacks (Kroki, etc.)
 - [`cloudflare/README.md`](cloudflare/README.md) — WAF, cache, and rate limit rule provisioning
 - [`gitlab-cdn/README.md`](gitlab-cdn/README.md) — CDN Worker architecture, deployment, and development
-- [`optional/README.md`](optional/README.md) — server hooks and file hooks
+- [`hooks/README.md`](hooks/README.md) — server hooks and file hooks
 
 ---
 

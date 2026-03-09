@@ -24,9 +24,9 @@ in doubt:
 
 - Deployment scripts live in `scripts/` and are named `<verb>.sh` or
   `<verb>-<noun>.sh`.
-- Server hooks live in `optional/` and have no `.sh` extension (they use
+- Server hooks live in `hooks/` and have no `.sh` extension (they use
   shebangs).
-- Ruby file hooks in `optional/` are named `<action>.rb`.
+- Ruby file hooks in `hooks/` are named `<action>.rb`.
 - Shell embedded in YAML `script:` blocks must use `printf` (not `echo`),
   quote all variables, and use `set -euo pipefail` where appropriate.
 - Every script starts with the `# ───` comment-header style explaining what

@@ -15,12 +15,12 @@ test-caddy-entrypoint:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        - optional/glitchtip/caddy/entrypoint.sh
+        - stacks/caddy/entrypoint.sh
         - tests/caddy/entrypoint.bats
         - tests/caddy/test_helper.bash
     - if: $CI_COMMIT_BRANCH
       changes:
-        - optional/glitchtip/caddy/entrypoint.sh
+        - stacks/caddy/entrypoint.sh
         - tests/caddy/entrypoint.bats
         - tests/caddy/test_helper.bash
 
@@ -35,17 +35,17 @@ test-caddy-container:
       --cache-from "type=registry,ref=$CADDY_CACHE_IMAGE"
       --load
       -t "$CADDY_TEST_IMAGE"
-      optional/glitchtip/caddy
+      stacks/caddy
     - CADDY_TEST_IMAGE="$CADDY_TEST_IMAGE" bats tests/caddy/container-smoke.bats
   rules:
     - if: $CI_COMMIT_TAG
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       changes:
-        - optional/glitchtip/caddy/**
+        - stacks/caddy/**
         - tests/caddy/container-smoke.bats
         - tests/caddy/test_helper.bash
     - if: $CI_COMMIT_BRANCH
       changes:
-        - optional/glitchtip/caddy/**
+        - stacks/caddy/**
         - tests/caddy/container-smoke.bats
         - tests/caddy/test_helper.bash
